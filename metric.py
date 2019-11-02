@@ -1,4 +1,4 @@
-import cv2 
+import cv2
 import numpy as np
 from skimage import color
 import matplotlib.pyplot as plt #importing matplotlib
@@ -15,16 +15,16 @@ def compare_hist(x1,x2,num):
     	# Kolmogorov–Smirnov test
         D,p = stats.ks_2samp(x1, x2)
     elif(num==1):
-    	# Basically, it calculates the overlap between the two histograms and 
-    	# then normalizes it by second histogram (you can use first). 
+    	# Basically, it calculates the overlap between the two histograms and
+    	# then normalizes it by second histogram (you can use first).
     	# You can use this function to calculate the similarity between the histograms.
         hist_1, _ = np.histogram(x1, bins=100, range=[0, 256])
         hist_2, _ = np.histogram(x2, bins=100, range=[0, 256])
         D = return_intersection(hist_1,hist_2)
-        
+
     return D
 
-# Give any imoriginal used after removing noise,  
+# Give any imoriginal used after removing noise,
 # imbinary images are labelled images from director "dir2" defined later
 # Will return 2 arrays, i.e an array of pixel values which are good part of eye
 # And onther array of pixels which represents bad part of eye
@@ -43,7 +43,7 @@ file = 'IDRiD_02'
 imoriginal = cv2.imread(dir+file+'.jpg')
 imbinary = cv2.imread(dir2+file+'_HE.tif')[:, :, 2]
 
-for ch in [0, 1, 2]: 
+for ch in [0, 1, 2]:
     bad_pixel, good_pixel = get_good_bad_pixels(imoriginal[:, :, ch],imbinary)
 
     x = plt.hist(bad_pixel,bins=256)
