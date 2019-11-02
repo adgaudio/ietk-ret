@@ -8,6 +8,7 @@ import glob
 import multiprocessing as mp
 import cv2
 from sklearn.decomposition import FastICA, PCA, NMF
+from util import get_background
 
 # improve calculation speed by down scaling image before finding bases especially for NMF
 SCALE_RATE = 0.5
@@ -103,7 +104,7 @@ def get_dark_channel(
     # img = cmy(img)
     # img = ica(img)
     # img = nmf(img)
-    
+
     _tmp = stats.norm.pdf(np.linspace(0, 1, filter_size), .5, .25/2)
     dark_channel = ndi.minimum_filter(
         img.min(-1), footprint=np.log(np.outer(_tmp, _tmp)) > -6)
@@ -169,6 +170,7 @@ def illumination_correction(img, dark_channel_filter_size=25,
 
 def dehaze_from_fp(fp):
     img = plt.imread(fp)
+    # remove background, assuming retinal fundus image
     background = get_background(img)
     img[background] = 1
     return dehaze(img)
@@ -177,21 +179,6 @@ def dehaze_from_fp(fp):
 def illuminate_from_fp(fp):
     img = plt.imread(fp).copy()
     return illuminate_dehaze(img)
-
-
-def get_background(img):
-    """Get a binary mask from the image by computing binary closing, fixing
-    edges from closing, then considering background only if all 3 channels
-    assumed pixel was background.
-    """
-    img = img/img.max()
-    background = (img < 20/255)
-    background = ndi.morphology.binary_closing(
-        background, np.ones((5, 5, 1)))
-    background |= np.pad(np.zeros(
-        (background.shape[0]-6, background.shape[1]-6, 3), dtype='bool'),
-        [(3, 3), (3, 3), (0, 0)], 'constant', constant_values=1)
-    return np.dstack([(background.sum(2) ==3)]*3)
 
 
 def illuminate_dehaze(img):
