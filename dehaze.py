@@ -120,11 +120,12 @@ def get_atmosphere(img: np.ndarray, dark: np.ndarray):
     that set.
     """
     # top 10\% of brightest pixels in dark channel
-    q = np.quantile(dark.ravel(), 0.9) - 1e-6
+    q = np.quantile(dark.ravel(), 0.999) - 1e-6
     mask = dark >= q
     rv = np.array([img[:, :, ch][mask].max() for ch in range(3)])
     assert img.shape[2] == 3  # sanity check
-    return rv
+    #  rv += 1 - rv.max()  # seems to make img brighter
+    return rv * -1
 
 
 def dehaze(img, dark_channel_filter_size=15, guided_filter_radius=50,
