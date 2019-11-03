@@ -124,8 +124,8 @@ def get_atmosphere(img: np.ndarray, dark: np.ndarray):
     mask = dark >= q
     rv = np.array([img[:, :, ch][mask].max() for ch in range(3)])
     assert img.shape[2] == 3  # sanity check
-    #  rv += 1 - rv.max()  # seems to make img brighter
-    return rv * -1
+    rv += 1 - rv.max()  # seems to make img brighter
+    return rv
 
 
 def dehaze(img, dark_channel_filter_size=15, guided_filter_radius=50,
@@ -204,7 +204,6 @@ def illuminate_dehaze(img):
 
 
 if __name__ == "__main__":
-
     fps_healthy = glob.glob('./data/IDRiD_08*')
     # fps_grade3 = glob.glob('./data/messidor_grade3/*/*')
 
