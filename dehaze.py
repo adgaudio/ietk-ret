@@ -100,9 +100,9 @@ def get_dark_channel(
     '''
     uncomment the function below to get a base changed image to calculate dark channel
     '''
-    img = pca(img)
-    # img = cmy(img)
-    # img = ica(img)
+    #  img = pca(img)
+    #  img = cmy(img)
+    #  img = ica(img)
     # img = nmf(img)
 
     _tmp = stats.norm.pdf(np.linspace(0, 1, filter_size), .5, .25/2)
@@ -137,7 +137,7 @@ def dehaze(img, dark_channel_filter_size=15, guided_filter_radius=50,
     #  A = np.maximum(A, atmosphere_upper_thresh)
 
     t_unrefined = 1 - get_dark_channel(img / A, dark_channel_filter_size)
-    t_unrefined = np.maximum(t_unrefined, 0.4)
+    #  t_unrefined = np.maximum(t_unrefined, 0.4)
 
     # refine dark channel using guided filter (ie like a bilateral filter or
     # anisotropic diffusion but faster)
@@ -170,7 +170,7 @@ def illumination_correction(img, dark_channel_filter_size=25,
 
 
 def dehaze_from_fp(fp):
-    img = plt.imread(fp)
+    img = plt.imread(fp).copy()
     # remove background, assuming retinal fundus image
     background = get_background(img)
     img[background] = 1
@@ -204,8 +204,18 @@ def illuminate_dehaze(img):
 
 
 if __name__ == "__main__":
-    fps_healthy = glob.glob('./data/IDRiD_08*')
-    # fps_grade3 = glob.glob('./data/messidor_grade3/*/*')
+    #  fp = 'data/tiananmen1.png'
+    #  img = plt.imread(fp)
+    #  dct = dehaze(img)
+    #  img2 = dct['radiance']
+    #  print(img2.min(), img2.max())
+    #  img2 = (img2 - img2.min()) / (img2.max() - img2.min())
+    #  plt.imshow(np.clip(img2, 0, 1))
+    #  plt.imshow(np.clip(img2, 0, 1))
+    #  import sys ; sys.exit()
+
+    fps_healthy = glob.glob('./data/messidor_grade1/*/*')
+    fps_grade3 = glob.glob('./data/messidor_grade3/*/*')
 
     #  for fp in fps_healthy[:10]:
         #  illuminate_from_fp(fp)
@@ -213,9 +223,9 @@ if __name__ == "__main__":
         #  illuminate_from_fp(fp)
 
     # testing: check that the methods work
-    fp = fps_healthy[0]
-    #  fp = './data/tiananmen1.png'
-    #  fp = './data/forest.jpg'
+    fp = fps_grade3[0]
+    #  #  fp = './data/tiananmen1.png'
+    #  #  fp = './data/forest.jpg'
     img = plt.imread(fp)
     d, d2 = illuminate_from_fp(fp)
     f, axs = plt.subplots(1, 3)
@@ -238,4 +248,16 @@ if __name__ == "__main__":
     axs[2].set_title("Dehazed")
     f.suptitle('Illumination Correction Pipeline')
     plt.show()
+
+
+    # dehaze
+    d = dehaze_from_fp(fp)
+    f, axs = plt.subplots(1, 3)
+    axs[0].imshow(img)
+    axs[0].set_title("Original Image")
+    axs[1].imshow(d['t_refined'], cmap='Greys')
+    axs[1].set_title("Dehaze Depth Map")
+    axs[2].imshow(d['radiance'])
+    axs[2].set_title("Dehazed")
+    f.suptitle('Dehazing the image')
     #  import sys ; sys.exit()
