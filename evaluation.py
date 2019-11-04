@@ -2,9 +2,8 @@
 Compare various methods
 """
 import os
-from functools import partial
 import multiprocessing as mp
-import matplotlib.pyplot as plt #importing matplotlib
+import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import skimage
