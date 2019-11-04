@@ -1,8 +1,39 @@
 import cv2
 import numpy as np
-from skimage import color
-import matplotlib.pyplot as plt #importing matplotlib
+import matplotlib.pyplot as plt
 from scipy import stats
+import pandas as pd
+
+
+def ks_test_max_per_channel(img, mask):
+    """Compute a 2-sample Kolmogorov-Smirnov statistic on each channel of image
+    returning the max value across channels.
+
+    Return float in [0, 1]
+        0 if the healthy and diseased pixels have the same distribution,
+        1 if they come from different distribution.
+
+    Input:
+        img - array of shape (h,w,ch)
+            Input image, which may have a variable number of channels
+        mask - boolean array of shape (h, w)
+            Ground truth labels identifying healthy vs diseased pixels.
+    """
+    assert mask.dtype == 'bool'
+    assert mask.shape == img.shape[:2]
+    maxstat = 0
+    for ch in range(img.shape[2]):
+        # get diseased (a) and healthy (b) pixels
+        a, b = img[:, :, ch][mask], img[:, :, ch][~mask]
+        # compute the stat
+        statistic = stats.ks_2samp(a.ravel(), b.ravel())[0]
+        maxstat = max(statistic, maxstat)
+    return maxstat
+
+
+eval_methods = {
+    'KS Test, max of the channels': ks_test_max_per_channel
+}
 
 def return_intersection(hist_1, hist_2):
     minima = np.minimum(hist_1, hist_2)
@@ -13,7 +44,7 @@ def return_intersection(hist_1, hist_2):
 def compare_hist(x1,x2,num):
     if(num==0):
         # Kolmogorov–Smirnov test
-        D,p = stats.ks_2samp(x1, x2)
+        D,p = stats.ks_2samp(x1.ravel(), x2.ravel())
     elif(num==1):
         # Basically, it calculates the overlap between the two histograms and
         # then normalizes it by second histogram (you can use first).
@@ -29,12 +60,22 @@ def compare_hist(x1,x2,num):
 # Will return 2 arrays, i.e an array of pixel values which are good part of eye
 # And onther array of pixels which represents bad part of eye
 def get_good_bad_pixels(imoriginal,imbinary):
+    #  imbinary is True if diseased, False if healthy.
+
 
     bad_pixel = imoriginal[imbinary != 0]
-    good_pixel = imbinary[imbinary == 0]
-    good_pixel = good_pixel[good_pixel > 15]
+    good_pixel = imoriginal[imbinary == 0]
+    #  good_pixel = good_pixel[good_pixel > 15]
 
     return bad_pixel, good_pixel
+
+
+def test_compare_hist_methods_mixture_of_gaussians():
+    x = np.random.randn(1000)
+    pd.DataFrame({'method %s' % method: [metric.compare_hist(
+        x/2+(np.random.randn(1000)*1+i)/2, np.random.randn(1000)*1 + i, method)
+        for i in range(20)] for method in [0, 1]}
+    ).plot()
 
 
 if __name__ == "__main__":

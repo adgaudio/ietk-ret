@@ -1,19 +1,18 @@
 """
 Compare various methods
 """
-import cv2
-import numpy as np
-from skimage import color
+import os
+from functools import partial
+import multiprocessing as mp
 import matplotlib.pyplot as plt #importing matplotlib
-from scipy import stats
-from skimage import exposure
-import skimage
 import pandas as pd
+import seaborn as sns
+import skimage
 
-import dehaze
 import metric
 from idrid import IDRiD
 import util
+import competing_methods
 
 
 def plot_img_and_hist(image, axes, bins=256):
@@ -35,48 +34,112 @@ def plot_img_and_hist(image, axes, bins=256):
     ax_hist.set_yticks([])
 
     # Display cumulative distribution
-    img_cdf, bins = exposure.cumulative_distribution(image, bins)
+    img_cdf, bins = skimage.exposure.cumulative_distribution(image, bins)
     ax_cdf.plot(bins, img_cdf, 'r')
     ax_cdf.set_yticks([])
 
     return ax_img, ax_hist, ax_cdf
 
 
-def test_compare_hist_methods_mixture_of_gaussians():
-    x = np.random.randn(1000)
-    pd.DataFrame({'method %s' % method: [metric.compare_hist(
-        x/2+(np.random.randn(1000)*1+i)/2, np.random.randn(1000)*1 + i, method)
-        for i in range(20)] for method in [0, 1]}
-    ).plot()
+def plot_qualitative(imgs_denoised):
+    f, axs = plt.subplots(2, 4)
+    for (method_name, img), ax in zip(imgs_denoised.items(), axs.ravel()):
+        ax.axis('off')
+        ax.imshow(img)
+        ax.set_title(method_name)
+    return f
 
 
-if __name__ == "__main__":
+def _evaluation_args(imgs_denoised, labels, evaluation_func):  # TODO: parallelize.  this takes forever.
+    for method_name, modified_img in imgs_denoised.items():
+        for lesion_type, mask in labels.items():
+            for stat_name, func in evaluation_func.items():
+                yield (method_name, modified_img, lesion_type, mask, stat_name,
+                       func)
 
+
+def _evaluate(method_name, modified_img, lesion_type, mask, stat_name, func):
+    return {
+        'Method': method_name,
+        'Evaluation Method': stat_name,
+        'Statistic': func(modified_img, mask),
+        'Lesion': lesion_type}
+
+
+def empirical_evaluation(
+        imgs_denoised, labels, evaluation_func,
+        plot=True, num_procs=None):
+    """Given a set of images, evaluate how well each one separates
+    the healthy from diseased pixels for a set of lesion types.
+
+    Input:
+        imgs_denoised - dict[str, array] of form {method_name: output_img}
+            Images output from the set of methods we wish to evaluate
+        labels - dict[str,bool_array] of form {lesion_name: label_mask}
+            Boolean masks containing ground truth labels (ie lesion annotation)
+        evaluation_func - (func|dict[str,func])
+            Func expects as input two arrays and outputs a similarity score
+        plot - bool
+            If False, don't plot.
+            Otherwise, just let
+        num_procs - (int)
+            Number of multiprocessing workers to use to parallelize task.
+    Output: tuple
+        pandas.DataFrame in long format - the score for each denoised image
+            for each label for each evaluation func
+        seaborn.FacetGrid - the plot that was generated or None
+    """
+    # Compute the statistics on the given data.
+    args = _evaluation_args(imgs_denoised, labels, evaluation_func)
+    if num_procs == 1:
+        data = [_evaluate(*x) for x in args]
+    else:
+        pool = mp.Pool(num_procs)
+        data = pool.starmap(_evaluate, args)
+    # format into nice result and plot
+    df = pd.DataFrame(data)
+    if plot:
+        fig = sns.catplot(
+            x='Lesion', y='Statistic', hue='Method', col='Evaluation Method',
+            data=df, kind='bar')
+    else:
+        fig = None
+    return df, fig
+
+
+def evaluate_idrid_img(
+        img_id, qualitative=True, empirical=True,
+        results_dir='./data/evaluation_idrid', num_procs=None):
     dset = IDRiD('./data/IDRiD_segmentation')
-
-    img, labels = dset['IDRiD_03']
-    he = labels['HE']
-    ma = labels['MA']
-    ex = labels['EX']
-    se = labels['SE']
-    od = labels['OD']
+    img, labels = dset.load_img(img_id)
 
     # set background pure black.
     bg = util.get_background(img)
     img[bg] = 0
 
-    # Contrast stretching
-    p2, p98 = np.percentile(img, (2, 98))
-    img_cs = exposure.rescale_intensity(img, in_range=(p2, p98))
-    # Equalization
-    img_eq = exposure.equalize_hist(img)
-    # Adaptive Equalization
-    img_adapteq = exposure.equalize_adapthist(img, clip_limit=0.03)
+    # set location to save data
+    os.makedirs(results_dir, exist_ok=True)
 
-    # plot the result of the methods
-    f, axs = plt.subplots(2, 2)
-    for img, ax in zip([img, img_cs, img_eq, img_adapteq], axs.ravel()):
-        ax.imshow(img)
+    # get the denoised images for all competing methods
+    pool = mp.Pool(num_procs)
+    rv = [(name, pool.apply_async(func, [img]))
+          for name, func in competing_methods.all_methods.items()]
+    imgs_denoised = {name: res.get() for name, res in rv}
+
+    # generate plots
+    if qualitative:
+        fig = plot_qualitative(imgs_denoised)
+        fig.savefig(os.path.join(results_dir, 'qualitative_%s.png' % img_id))
+    if empirical:
+        df, fig2 = empirical_evaluation(
+            imgs_denoised, labels, metric.eval_methods.copy(),
+            num_procs=num_procs)
+        fig2.savefig(os.path.join(results_dir, 'empirical_%s.png' % img_id))
+        df.to_csv(
+            os.path.join(results_dir, 'stats_%s.csv' % img_id),
+            index=False)
+    return locals()
+
 
     #  for ch in [0, 1, 2]:
         #  bad_pixel, good_pixel = get_good_bad_pixels(imoriginal[:, :, ch],imbinary)
@@ -92,4 +155,31 @@ if __name__ == "__main__":
         #  metric = compare_hist(bad_pixel, good_pixel, 1)
 
         #  print(metric,"ch ",ch)
+
+
+if __name__ == "__main__":
+    # temp hack command-line parameters
+    import sys
+    try:
+        IMG_ID = sys.argv[1]
+    except:
+        IMG_ID = 'IDRiD_03'
+    try:
+        NUM_PROCS = int(sys.argv[2])
+    except:
+        NUM_PROCS = None
+
+    evaluate_idrid_img(IMG_ID, num_procs=NUM_PROCS)
     plt.show()
+
+    # debugging ... here's an image ready to go
+    #  dset = IDRiD('./data/IDRiD_segmentation')
+    #  img, labels = dset['IDRiD_03']
+    #  #  he = labels['HE']
+    #  #  ma = labels['MA']
+    #  #  ex = labels['EX']
+    #  #  se = labels['SE']
+    #  #  od = labels['OD']
+    #  # set background pure black.
+    #  bg = util.get_background(img)
+    #  img[bg] = 0

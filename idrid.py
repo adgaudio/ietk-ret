@@ -17,15 +17,15 @@ class IDRiD:
         >>> img.shape, label_masks['HE'].shape, label_masks.keys()
             ((2848, 4288, 3),
             (2848, 4288),
-            dict_keys(['imgs', 'MA', 'HE', 'EX', 'SE', 'OD'])))
+            dict_keys(['MA', 'HE', 'EX', 'SE', 'OD'])))
 
-    Note that not all images display all lesion types.  This means some masks
-    will be entirely black.
+    Note that not all images contain all lesion types.  This means some masks
+    may be missing from those requested.
 
         >>> print('num images containing each lesion type:', '\n',
                   {k: len(v) for k, v in dset.fps.items()})
             num images containing each lesion type:
-             {'imgs': 54, 'MA': 54, 'HE': 53, 'EX': 54, 'SE': 26, 'OD': 54}
+             {54, 'MA': 54, 'HE': 53, 'EX': 54, 'SE': 26, 'OD': 54}
 
     """
     def __init__(self, base_dir='./data/IDRiD_segmentation', train=True):
@@ -55,7 +55,7 @@ class IDRiD:
         Input:
             img_id: str of form 'IDRiD_XX'  where XX are digits
             labels: list of str defining which label masks to get.
-                if labels=None, assume labels=('HE', 'ME', 'EX', 'SE', 'OD')
+                if labels=None, assume labels=('HE', 'MA', 'EX', 'SE', 'OD')
         Return:
             img - RGB 3 channel image, normalized between 0 and 1
             labels - dict of form {label: label_mask} where label_mask is a
@@ -63,13 +63,18 @@ class IDRiD:
         """
         img = plt.imread(self.fps['imgs'][img_id]) / 255
         if labels is None:
-                labels = ('HE', 'ME', 'EX', 'SE', 'OD')
+                labels = {'HE', 'MA', 'EX', 'SE', 'OD'}
 
-        _empty_label_img = np.zeros(img.shape, dtype='bool')
+        # --> if image has no MA, set the mask as all False.
+        #  _empty_label_img = np.zeros(img.shape, dtype='bool')
+
         masks = {
             label_name: plt.imread(fp_dct[img_id])[:, :, 0].astype('bool')
-            if img_id in fp_dct else _empty_label_img.copy()
-            for label_name, fp_dct in self.fps.items()}
+            #if img_id in fp_dct else _empty_label_img.copy()
+            for label_name, fp_dct in self.fps.items()
+            if label_name in labels
+            and img_id in fp_dct  # ie. ignore MA if image has no MA
+        }
         return img, masks
 
     def __getitem__(self, img_id):
