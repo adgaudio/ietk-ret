@@ -1,4 +1,3 @@
-SimpleITK
 cv2
 glob
 joblib
@@ -10,4 +9,6 @@ pandas
 random
 scipy
 seaborn
+skimage
+sklearn
 
