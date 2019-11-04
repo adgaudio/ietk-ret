@@ -144,6 +144,7 @@ def dehaze(img, dark_channel_filter_size=15, guided_filter_radius=50,
     t_refined = cv2.ximgproc.guidedFilter(
         img.astype('float32'),
         t_unrefined.astype('float32'), guided_filter_radius, guided_eps)
+    t_refined = t_refined.clip(0, 1)  # guided filter can make slightly >1
 
     radiance = (  # Eq. 22 of paper
         img.astype('float')-A) \
@@ -164,8 +165,9 @@ def illumination_correction(img, dark_channel_filter_size=25,
     t_refined = 1-cv2.ximgproc.guidedFilter(
         1-img.astype('float32'),
         t_unrefined.astype('float32'), guided_filter_radius, guided_eps)
+    t_refined = t_refined.clip(0, 1)  # guided filter can make slightly >1
     # invert the inverted image when recovering radiance
-    radiance = 1 - (((1-img.astype('float')) - A)/np.expand_dims(t_refined, -1) + 1)
+    radiance = 1 - (((1-img.astype('float')) - A)/np.expand_dims(t_refined, -1) + A)
     return locals()
 
 
