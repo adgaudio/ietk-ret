@@ -22,3 +22,9 @@ def get_background(img):
         (background.shape[0]-6, background.shape[1]-6, 3), dtype='bool'),
         [(3, 3), (3, 3), (0, 0)], 'constant', constant_values=1)
     return np.dstack([(background.sum(2) == 3)] * 3)
+
+
+def norm01(img):
+    """normalize in [0,1] using global min and max"""
+    min_, max_ = img.min(), img.max()
+    return (img - min_) / (max_ - min_)
