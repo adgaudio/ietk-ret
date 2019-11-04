@@ -47,6 +47,7 @@ def plot_qualitative(imgs_denoised):
     for (method_name, img), ax in zip(imgs_denoised.items(), axs.ravel()):
         ax.imshow(img)
         ax.set_title(method_name, {'fontsize': 'small'})
+    f.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=.01, hspace=-.3)
     return f
 
 
@@ -122,11 +123,16 @@ def evaluate_idrid_img(
     os.makedirs(results_dir, exist_ok=True)
 
     # get the denoised images for all competing methods
-    pool = mp.Pool(num_procs)
-    rv = [(name, pool.apply_async(func, [img]))
-          for name, func in competing_methods.all_methods.items()]
-    imgs_denoised = {name: res.get() for name, res in rv}
-    del pool, rv
+    if num_procs == 1:
+        imgs_denoised = {
+            name: func(img)
+            for name, func in competing_methods.all_methods.items()}
+    else:
+        pool = mp.Pool(num_procs)
+        rv = [(name, pool.apply_async(func, [img]))
+            for name, func in competing_methods.all_methods.items()]
+        imgs_denoised = {name: res.get() for name, res in rv}
+        del pool, rv
 
     # generate plots
     if qualitative:
