@@ -46,11 +46,11 @@ def plot_qualitative(imgs_denoised):
     for (method_name, img), ax in zip(imgs_denoised.items(), axs.ravel()):
         ax.axis('off')
         ax.imshow(img)
-        ax.set_title(method_name)
+        ax.set_title(method_name, {'fontsize': 'medium'})
     return f
 
 
-def _evaluation_args(imgs_denoised, labels, evaluation_func):  # TODO: parallelize.  this takes forever.
+def _evaluation_args(imgs_denoised, labels, evaluation_func):
     for method_name, modified_img in imgs_denoised.items():
         for lesion_type, mask in labels.items():
             for stat_name, func in evaluation_func.items():
@@ -96,6 +96,7 @@ def empirical_evaluation(
     else:
         pool = mp.Pool(num_procs)
         data = pool.starmap(_evaluate, args)
+        del pool
     # format into nice result and plot
     df = pd.DataFrame(data)
     if plot:
@@ -125,6 +126,7 @@ def evaluate_idrid_img(
     rv = [(name, pool.apply_async(func, [img]))
           for name, func in competing_methods.all_methods.items()]
     imgs_denoised = {name: res.get() for name, res in rv}
+    del pool, rv
 
     # generate plots
     if qualitative:
@@ -158,6 +160,9 @@ def evaluate_idrid_img(
 
 
 if __name__ == "__main__":
+    # run this from shell.  -j 2 requires 20gb of ram.  -j 1 requires 10gb.
+    # seq -f '%02g' 1 54 | parallel -j 2 python evaluation.py 'IDRiD_{}'
+
     # temp hack command-line parameters
     import sys
     try:
@@ -170,7 +175,7 @@ if __name__ == "__main__":
         NUM_PROCS = None
 
     evaluate_idrid_img(IMG_ID, num_procs=NUM_PROCS)
-    plt.show()
+    #plt.show()
 
     # debugging ... here's an image ready to go
     #  dset = IDRiD('./data/IDRiD_segmentation')
