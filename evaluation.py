@@ -47,7 +47,7 @@ def plot_qualitative(imgs_denoised):
     for (method_name, img), ax in zip(imgs_denoised.items(), axs.ravel()):
         ax.imshow(img)
         ax.set_title(method_name, {'fontsize': 'small'})
-    f.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=.01, hspace=-.3)
+    f.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=.01, hspace=-.4)
     return f
 
 
