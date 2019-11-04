@@ -43,10 +43,11 @@ def plot_img_and_hist(image, axes, bins=256):
 
 def plot_qualitative(imgs_denoised):
     f, axs = plt.subplots(2, 4)
-    for (method_name, img), ax in zip(imgs_denoised.items(), axs.ravel()):
+    for ax in axs.ravel():
         ax.axis('off')
+    for (method_name, img), ax in zip(imgs_denoised.items(), axs.ravel()):
         ax.imshow(img)
-        ax.set_title(method_name, {'fontsize': 'medium'})
+        ax.set_title(method_name, {'fontsize': 'small'})
     return f
 
 
