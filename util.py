@@ -24,7 +24,15 @@ def get_background(img):
     return np.dstack([(background.sum(2) == 3)] * 3)
 
 
-def norm01(img):
-    """normalize in [0,1] using global min and max"""
-    min_, max_ = img.min(), img.max()
-    return (img - min_) / (max_ - min_)
+def norm01(img, background=None):
+    """normalize in [0,1] using global min and max.
+    If background mask given, exclude it from normalization."""
+    if background is not None:
+        tmp = img[~background]
+        min_, max_ = tmp.min(), tmp.max()
+    else:
+        min_, max_ = img.min(), img.max()
+    rv = (img - min_) / (max_ - min_)
+    if background is not None:
+        rv[background] = img[background]
+    return rv
