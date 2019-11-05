@@ -51,24 +51,25 @@ def plot_qualitative(imgs_denoised):
     return f
 
 
-def _evaluation_args(imgs_denoised, labels, evaluation_func):
+def _evaluation_args(imgs_denoised, labels, evaluation_func, background):
     for method_name, modified_img in imgs_denoised.items():
         for lesion_type, mask in labels.items():
             for stat_name, func in evaluation_func.items():
                 yield (method_name, modified_img, lesion_type, mask, stat_name,
-                       func)
+                       func, background)
 
 
-def _evaluate(method_name, modified_img, lesion_type, mask, stat_name, func):
+def _evaluate(method_name, modified_img, lesion_type, mask, stat_name, func,
+              background):
     return {
         'Method': method_name,
         'Evaluation Method': stat_name,
-        'Statistic': func(modified_img, mask),
+        'Statistic': func(modified_img, mask, background),
         'Lesion': lesion_type}
 
 
 def empirical_evaluation(
-        imgs_denoised, labels, evaluation_func,
+        imgs_denoised, labels, evaluation_func, background,
         plot=True, num_procs=None):
     """Given a set of images, evaluate how well each one separates
     the healthy from diseased pixels for a set of lesion types.
@@ -80,6 +81,8 @@ def empirical_evaluation(
             Boolean masks containing ground truth labels (ie lesion annotation)
         evaluation_func - (func|dict[str,func])
             Func expects as input two arrays and outputs a similarity score
+        background - bool_array
+            Boolean mask with a 1 at pixels to be ignored.
         plot - bool
             If False, don't plot.
             Otherwise, just let
@@ -91,7 +94,7 @@ def empirical_evaluation(
         seaborn.FacetGrid - the plot that was generated or None
     """
     # Compute the statistics on the given data.
-    args = _evaluation_args(imgs_denoised, labels, evaluation_func)
+    args = _evaluation_args(imgs_denoised, labels, evaluation_func, background)
     if num_procs == 1:
         data = [_evaluate(*x) for x in args]
     else:
@@ -140,7 +143,7 @@ def evaluate_idrid_img(
         fig.savefig(os.path.join(results_dir, 'qualitative_%s.png' % img_id))
     if empirical:
         df, fig2 = empirical_evaluation(
-            imgs_denoised, labels, metric.eval_methods.copy(),
+            imgs_denoised, labels, metric.eval_methods.copy(), background=bg,
             num_procs=num_procs)
         fig2.savefig(os.path.join(results_dir, 'empirical_%s.png' % img_id))
         df.to_csv(
