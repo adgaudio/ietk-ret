@@ -67,15 +67,10 @@ r2 = cv2.ximgproc.guidedFilter(
     radiance.astype('float32'),
     2, guided_eps)
 r2[bg] = 0
-r2 = cv2.ximgproc.guidedFilter(
-    img.astype('float32'),
-    r2.astype('float32'),
-    2, guided_eps)
-r2[bg] = 0
 
 
 plt.figure(num=1) ; plt.imshow(img)
-plt.figure(num=2) ; plt.imshow(util.norm01(radiance, bg))
+plt.figure(num=2) ; plt.imshow(util.norm01(radiance, None))
 plt.figure(num=3) ; plt.imshow(radiance.clip(0, 1))
 plt.figure(num=4) ; plt.imshow(util.norm01(r2, bg))
 plt.figure(num=5) ; plt.imshow(r2.clip(0, 1))

@@ -37,7 +37,8 @@ def ks_test_max_per_channel(img, mask, bg):
 
 
 eval_methods = {
-    'KS Test, max of the channels': ks_test_max_per_channel
+    'KS Test, max of the channels': ks_test_max_per_channel  # test if healthy separable from diseased.
+    # need test if lesions (MA,HE,etc) have the same intensities across images.  how about:  var(sum_imgs(p(rgb|lesion=MA)))  where p(rgb|lesion) is a 255*3 vector for each img.
 }
 
 def return_intersection(hist_1, hist_2):

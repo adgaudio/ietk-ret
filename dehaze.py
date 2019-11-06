@@ -3,85 +3,9 @@ import scipy.ndimage as ndi
 import scipy.stats as stats
 import numpy as np
 from matplotlib import pyplot as plt
-from mpl_toolkits.axes_grid1.axes_grid import ImageGrid
 import glob
-import multiprocessing as mp
 import cv2
-from sklearn.decomposition import FastICA, PCA, NMF
 from util import get_background
-
-# improve calculation speed by down scaling image before finding bases especially for NMF
-SCALE_RATE = 0.5
-
-def down_scale(img):
-    width = int(img.shape[1] * SCALE_RATE)
-    height = int(img.shape[0] * SCALE_RATE)
-    resized = cv2.resize(img, (width, height), interpolation = cv2.INTER_AREA)
-    return resized
-
-def pca(img):
-    assert (len(img.shape) == 3)
-    img_fit = down_scale(img)
-    img_fit = img_fit.reshape(-1, 3)
-
-    # run pca
-    model = PCA(n_components=3)
-    model.fit_transform(img_fit)
-
-    # get result
-    height, width, _ = img.shape
-    img = img.reshape(-1, 3)
-    result = model.transform(img)
-    result = np.reshape(result, (height, width, 3))
-
-    # abs the result thus the min operation will find the distance to each base
-    result = abs(result)
-
-    return result
-
-
-def ica(img):
-    assert (len(img.shape) == 3)
-    img_fit = down_scale(img)
-    img_fit = img_fit.reshape(-1, 3)
-
-    # run ica
-    model = FastICA(n_components=3)
-    model.fit_transform(img_fit)
-
-    # get result
-    height, width, _ = img.shape
-    img = img.reshape(-1, 3)
-    result = model.transform(img)
-    result = np.reshape(result, (height, width, 3))
-
-    # abs the result thus the min operation will find the distance to each base
-    result = abs(result)
-
-    return result
-
-
-def nmf(img):
-    assert (len(img.shape) == 3)
-    img_fit = down_scale(img)
-    img_fit = img_fit.reshape(-1, 3)
-
-    # run NMF
-    model = NMF(n_components=3, init='random', random_state=0)
-    model.fit_transform(img_fit)
-
-    # get result
-    height, width, _ = img.shape
-    img = img.reshape(-1, 3)
-    result = model.transform(img)
-    result = np.reshape(result, (height, width, 3))
-
-    return result
-
-
-def cmy(img):
-    # assume k = 0
-    return 1 - img
 
 
 def get_dark_channel(
@@ -96,15 +20,6 @@ def get_dark_channel(
     img: np.ndarray of size (h, x, 3)
     filter_size: integer
     """
-
-    '''
-    uncomment the function below to get a base changed image to calculate dark channel
-    '''
-    #  img = pca(img)
-    #  img = cmy(img)
-    #  img = ica(img)
-    # img = nmf(img)
-
     _tmp = stats.norm.pdf(np.linspace(0, 1, filter_size), .5, .25/2)
     dark_channel = ndi.minimum_filter(
         img.min(-1), footprint=np.log(np.outer(_tmp, _tmp)) > -6)
