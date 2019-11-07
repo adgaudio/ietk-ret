@@ -86,7 +86,7 @@ class IDRiD:
             masks = {}
         return img, masks
 
-    def iter_imgs(self, labels=None):
+    def iter_imgs(self, labels=None, shuffle=False):
         """
         Return iterator over the set of images.  For instance:
 
@@ -97,11 +97,13 @@ class IDRiD:
         Input:
             labels: list of str defining which label masks to get.
                 if labels=None, assume labels=('HE', 'MA', 'EX', 'SE', 'OD')
+            shuffle: bool. Whether to return images in randomized order.
         Return:
             an iterator over images in the dataset.
         """
         img_ids = list(self.fps['imgs'])
-        random.shuffle(img_ids)
+        if shuffle:
+            random.shuffle(img_ids)
         for img_id in img_ids:
             rv = [img_id]
             rv.extend(self.load_img(img_id, labels))
