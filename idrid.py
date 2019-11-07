@@ -1,10 +1,10 @@
 """
 class to load IDRiD dataset
 """
+import random
 import glob
 from os.path import basename
 import re
-import numpy as np
 from matplotlib import pyplot as plt
 
 
@@ -27,7 +27,14 @@ class IDRiD:
             num images containing each lesion type:
              {54, 'MA': 54, 'HE': 53, 'EX': 54, 'SE': 26, 'OD': 54}
 
+    Label names available in this dataset:
+    'MA' - Microaneurysms
+    'HE' - Hemorrhages
+    'EX' - Hard Exudates
+    'SE' - Soft Exudates (Cotton Wool Spots)
+    'OD' - Optic Disc Segmentation (not used for Diabetic Retinopathy)
     """
+    labels = ('MA', 'HE', 'EX', 'SE', 'OD')
     def __init__(self, base_dir='./data/IDRiD_segmentation', train=True):
         """base_dir - (str) filepath to the IDRiD Segmentation dataset"""
         if train is not True:
@@ -67,15 +74,41 @@ class IDRiD:
 
         # --> if image has no MA, set the mask as all False.
         #  _empty_label_img = np.zeros(img.shape, dtype='bool')
-
-        masks = {
-            label_name: plt.imread(fp_dct[img_id])[:, :, 0].astype('bool')
-            #if img_id in fp_dct else _empty_label_img.copy()
-            for label_name, fp_dct in self.fps.items()
-            if label_name in labels
-            and img_id in fp_dct  # ie. ignore MA if image has no MA
-        }
+        if labels:
+            masks = {
+                label_name: plt.imread(fp_dct[img_id])[:, :, 0].astype('bool')
+                #if img_id in fp_dct else _empty_label_img.copy()
+                for label_name, fp_dct in self.fps.items()
+                if label_name in labels
+                and img_id in fp_dct  # ie. ignore MA if image has no MA
+            }
+        else:
+            masks = {}
         return img, masks
+
+    def iter_imgs(self, labels=None):
+        """
+        Return iterator over the set of images.  For instance:
+
+            >>> dset = IDRiD()
+            >>> for img_id, img, _ in dset.iter_imgs(labels=()): break
+            >>> for img_id, img, labels in dset.iter_imgs(): break
+
+        Input:
+            labels: list of str defining which label masks to get.
+                if labels=None, assume labels=('HE', 'MA', 'EX', 'SE', 'OD')
+        Return:
+            an iterator over images in the dataset.
+        """
+        img_ids = list(self.fps['imgs'])
+        random.shuffle(img_ids)
+        for img_id in img_ids:
+            rv = [img_id]
+            rv.extend(self.load_img(img_id, labels))
+            yield tuple(rv)
+
+    def __iter__(self):
+        yield from self.iter_imgs()
 
     def __getitem__(self, img_id):
         return self.load_img(img_id)
