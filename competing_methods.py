@@ -2,6 +2,7 @@ from functools import partial
 from skimage import exposure
 import dehaze
 import numpy as np
+from sharpen_img import sharpen
 
 
 def contrast_stretching(img):
@@ -40,6 +41,7 @@ all_methods = {
     'Dehazed (DCP)': dehaze_dcp,
     'Illuminated (DCP)': illuminate_dcp,
     'Illuminated-Dehazed (DCP)': illuminate_dehaze_dcp,
+    'Sharpen, t=0.1': sharpen,
     'Contrast Stretching': contrast_stretching,
     'Histogram Eq.': hist_eq,
     'Adaptive Histogram Eq.': adaptive_hist_eq,
