@@ -17,14 +17,13 @@ import util
 def iter_imgs(labels):
     dset = IDRiD('./data/IDRiD_segmentation')
     for img_id, img, labels in dset.iter_imgs(labels=labels):
-        bg = util.get_background(img)[:, :, 0]
+        fg = util.get_foreground(img)[:, :, 0]
 
         # center all images so rgb values are comparable.
-        # TODO: rescale so the average is 0.5, without messing [0, 1] bounds.
-        #  pixels += 0.5 - pixels.mean(axis=0, keepdims=True)
+        img = util.zero_mean(img, fg)
 
         for lesion_name, mask in labels.items():
-            yield (img_id, lesion_name, img, mask, bg)
+            yield (img_id, lesion_name, img, mask, fg)
 
 
 class BayesDiseasedPixel(dict):
@@ -63,19 +62,19 @@ class BayesDiseasedPixel(dict):
     def _update_count(self, label_name):
         self['count_%s' % label_name] += 1
 
-    def _update_prior(self, label_name, mask, bg):
+    def _update_prior(self, label_name, mask, fg):
         k = 'p(%s|D)' % label_name
-        p = mask.sum() / (~bg).sum()  # p(label|I)
+        p = mask.sum() / (fg).sum()  # p(label|I)
         n = self['count_%s' % label_name]
         self[k] = (1-1/n)*self[k] + p/n  # p(label|D) = \sum p(label|I,D)p(I|D)
 
-    def _update_likelihood_and_marginal(self, label_name, img, mask, bg,
+    def _update_likelihood_and_marginal(self, label_name, img, mask, fg,
                                         update_marginal=True):
         #  n = self['count_%s' % label_name]
 
         def _likelihood():
             H_diseased, _ = np.histogramdd(
-                img[~bg & mask], bins=self.bins,
+                img[fg & mask], bins=self.bins,
                 range=[(0, 1), (0, 1), (0, 1)])
             k_diseased = 'H(rgb|%s,D)' % label_name
             #  p = H_diseased / H_diseased.sum()  # p(rgb|lesion,I,D)
@@ -85,7 +84,7 @@ class BayesDiseasedPixel(dict):
 
         def _likelihood_not_diseased():
             H_healthy, _ = np.histogramdd(
-                img[~bg & ~mask],
+                img[fg & ~mask],
                 bins=self.bins, range=[(0, 1), (0, 1), (0, 1)])
             k_healthy = 'H(rgb|not(%s),D)' % label_name
             #  p_healthy = H_healthy / H_healthy.sum()
@@ -105,73 +104,46 @@ class BayesDiseasedPixel(dict):
         if update_marginal:
             _marginal()
 
-    def update_stats(self, img_id, label_name, img, mask, bg):
+    def update_stats(self, img_id, label_name, img, mask, fg):
         self._update_count(label_name)
         is_new_img = img_id not in self._set_of_observations
 
-        self._update_prior(label_name, mask, bg)
+        self._update_prior(label_name, mask, fg)
         self._update_likelihood_and_marginal(
-            label_name, img, mask, bg,
+            label_name, img, mask, fg,
             update_marginal=is_new_img)
         self._set_of_observations.add(img_id)
 
     def eval_posterior(self, label_name, rgb):
         """
-        Compute rhs of p(label|r,g,b) = p(r,g,b|label)p(label)/p(r,g,b)
-
-        #  Compute rhs of p(label|r,g,b)p(r,g,b) = p(r,g,b|label)p(label)
-        #  It is expensive to compute p(r,g,b) so we just dont compute it.
-
-        label_name - str.  one of the labels the model was trained on.
-        rgb - ndarray.  a Nx3 matrix of pixel values. columns are R,G,B.
+        Compute p(label|rgb) = p(label,rgb) / p(rgb)
         """
         # look up the index of the closest bin
         ri, gi, bi = np.searchsorted(
             np.linspace(0, 1, self.bins)[1:],
             rgb.ravel(), side='right').reshape(rgb.shape).T
-
-        # compute the probability
-        prior = self['p(%s|D)' % label_name]
-        c_marginal = self['H(rgb|D)'][ri, gi, bi]
-        marginal = \
-            c_marginal / len(self._set_of_observations) / c_marginal.sum()
-
-        c_likelihood = self['H(rgb|%s,D)' % label_name][ri, gi, bi]
-        likelihood = \
-            c_likelihood / self['count_%s' % label_name] / c_likelihood.sum()
-        X = likelihood / marginal * prior
-
-        # numerical precision correction when the marginal prob is very small.
-        #  (or at least I believe that is the issue)
-        l1 = self['H(rgb|not(%s),D)' % label_name][ri, gi, bi]
-        l1 = l1 / l1.sum() / self['count_%s' % label_name]
-        X2 = l1 / marginal * prior
-        X2 = l1 / c_marginal\
-            * (c_marginal.sum() / l1.sum())\
-            * (len(self._set_of_observations) / self['count_%s' % label_name] )
-        #  X[X > 1] = X2[X > 1]
-
-        # still need this to fix numerical stability when marginal is 1e-12
-        X = X.clip(0, 1)
-
-        # TODO: gracefully handle missing data in the training set.
-        #  missing_data_mask = np.isnan(X)
-        #  assert missing_data_mask.sum() == 0
-        #  likelihood[missing_data_mask] = 0  # 0 probability for missing data
-        #  marginal[missing_data_mask] = 1  # avoid spurious error
-        # fix numerical precision issues
-
-        #  print(np.round(np.array([np.median(X), np.median(1-X2), X.min(), X.max(), (1-X2).min(), (1-X2).max()]), 5))
-        #  assert (X<=1).all()
-        #  assert (X>=0).all()
+        # get probability
+        x = self['H(rgb|%s,D)' % label_name][ri, gi, bi]
+        z = self['H(rgb|D)'][ri, gi, bi]
+        X = x / z  # p(rgb,MA) / p(rgb)
+        # sanity check
+        #  _nk_li = 'H(rgb|not(%s),D)' % label_name
+        #  y = self[_nk_li][ri, gi, bi]
+        #  X2 = y / (x+y)  # p(rgb,not(MA)) / p(rgb)
+        #  assert np.allclose(self[_k_li] + self[_nk_li], self['H(rgb|D)'])
+        #  assert X.min() >= 0
+        #  assert X.max() <= 1
+        #  assert X2.min() >= 0
+        #  assert X2.max() <= 1
+        #  assert (X + X2 == 1).all()
         return X
 
 
 def train(labels):
     S = BayesDiseasedPixel(labels)
-    for img_id, lesion_name, img, mask, bg in iter_imgs(labels):
+    for img_id, lesion_name, img, mask, fg in iter_imgs(labels):
         print(img_id, lesion_name)
-        S.update_stats(img_id, lesion_name, img, mask, bg)
+        S.update_stats(img_id, lesion_name, img, mask, fg)
     # save model
     with open('./data/idrid_bayes_prior.pickle', 'wb') as fout:
         fout.write(pickle.dumps(S))
@@ -185,58 +157,55 @@ def load_pretrained(fp='./data/idrid_bayes_prior.pickle'):
     # do weird things to work around annoying pickle issues:
     S = BayesDiseasedPixel(())
     S.update(rv)
-    S.__dict__.update(rv)
+    S.__dict__.update(rv.__dict__)
     return S
 
 
-def get_transmission_map(label_name, img, bg, model=None):
+def get_transmission_map(label_name, img, focus_region, model=None):
     if model is None:
         model = load_pretrained()
-    rgb = img[~bg]
+    rgb = img[focus_region]
     tmp = model.eval_posterior(label_name, rgb)
     rv = np.zeros(img.shape[:2])
-    rv[~bg] = tmp
+    rv[focus_region] = tmp
     return rv
 
 
-def bayes_sharpen(img, label_name, bg):
-    t = get_transmission_map(label_name, img, bg)
-    # hack
-    #  t = mask.astype('float')
-    t = (1-((t-t.mean())/t.std()+.5)).clip(0.15, 1)
+def bayes_sharpen(img, label_name, focus_region):
+    t = get_transmission_map(label_name, img, focus_region)
+    print(t.min(), t.max())
+    t = 1 - t
+    z = t[focus_region]
+    desired_range = .3
+    desired_min = 0.001
+    t = (t - z.min()) / (z.max() - z.min()) * desired_range + desired_min
+    z = t[focus_region]
+    print(z.min(), z.max())
+    #  t = t.clip(.15, 1)
+    bg = ~focus_region
     t[bg] = 0
     sharp = sharpen(img, bg, t=t)
     return sharp
 
 
 if __name__ == "__main__":
-    #  s = load_pretrained()
     labels = IDRiD.labels
     #  labels = ['HE']
+    #  s = load_pretrained()
     s = train(labels)
     print('done train')
 
-    for img_id, lesion_name, img, mask, bg in iter_imgs(labels):
-        t = get_transmission_map(lesion_name, img, bg)
-        # hack
-        #  t = mask.astype('float')
-        t = (1-((t-t.mean())/t.std()+.5)).clip(0.15, 1)
-        t[bg] = 0
-        #  t = 0.1
-        #  assert (t[mask] >0).all()  # model missed a pixel of training img.
-    #  #      print(img.min(), img.max())
-    #  #      print('===')
-    #  #      print(img_id, lesion_name)
-        #  plt.clf()
-        img[bg] = 0
-        sharp = sharpen(img, bg, t=t)
+    for img_id, lesion_name, img, mask, fg in iter_imgs(labels):
+
         plt.figure(num=1)
         plt.clf()
         f, (a,b,c) = plt.subplots(1, 3, num=1, figsize=(12, 12))
         f.suptitle('%s %s' % (img_id, lesion_name))
 
-        a.imshow(sharpen(img, bg, t=.15))
-        b.imshow(sharp)
+        a.imshow(sharpen(img, ~fg, t=.15))
+        b.imshow(bayes_sharpen(img, lesion_name, fg))
+
+        t = get_transmission_map(lesion_name, img, fg)
         c.imshow(np.dstack([t,mask, t>0]))
         plt.pause(0.01)
         #  f, (a, b) = plt.subplots(2, 1, num=1, sharex=True, sharey=True)

@@ -86,6 +86,9 @@ def _evaluate_func(Z, _ensure_labels=True):
             return  # the label is not available for this image
     focus_region = Z.get_focus_region(img)
 
+    # center image
+    img = util.zero_mean(img, focus_region)
+
     modified_img = Z.func(img=img, focus_region=focus_region, **Z._asdict())
     return modified_img, label_mask, focus_region
 
@@ -178,7 +181,7 @@ def evaluate_idrid_img(
             competing_methods.all_methods.copy(), {'ignore': 'ignore'})
         if num_procs == 1:
             imgs_denoised = {  # method_name: img
-                tup[2]: _evaluate_func(tup, _ensure_labels=False)
+                tup[2]: _evaluate_func(tup, _ensure_labels=False)[0]
                 for tup in args}
         else:
             with mp.Pool(num_procs) as pool:

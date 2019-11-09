@@ -32,6 +32,8 @@ def sharpen(img, bg, t=0.15, blur_radius=30, blur_guided_eps=1e-2):
         t_refined = np.expand_dims(t, -1).astype('float')
     else:
         t_refined = t
+    if np.shape(t):
+        t_refined[bg] = 1  # ignore background, but fix division by zero
     J = (  # Eq. 22 of paper
         img.astype('float')-A) / t_refined + A
     if bg is not None:

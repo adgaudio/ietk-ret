@@ -28,6 +28,11 @@ def get_foreground(img):
     return ~get_background(img)
 
 
+def zero_mean(img, fg):
+    z = img[fg]
+    return (img - z.mean()) + 0.5
+
+
 def norm01(img, background=None):
     """normalize in [0,1] using global min and max.
     If background mask given, exclude it from normalization."""
