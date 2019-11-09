@@ -43,7 +43,8 @@ def sharpen(img, focus_region, **junk):
 
 
 def bayes_sharpen(img, focus_region, label_name, **junk):
-    return bayes_prior.bayes_sharpen(img, label_name, bg=~focus_region)
+    return bayes_prior.bayes_sharpen(
+        img, label_name, bg=~focus_region[:, :, 0])
 #  def bayes_prior(img):
     #  model = BayesDiseasedPixel.load('./idrid_bayes_prior.pickle')
     #  t =

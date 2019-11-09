@@ -5,7 +5,7 @@ map can be thought of as probabilities.
 """
 import numpy as np
 from matplotlib import pyplot as plt
-import pickle
+import dill as pickle
 import functools
 
 
@@ -166,45 +166,40 @@ class BayesDiseasedPixel(dict):
         #  assert (X>=0).all()
         return X
 
-    def save(self, fp):
-        with open(fp, 'wb') as fout:
-            pickle.dump(self, fout)
-
-    @staticmethod
-    def load(fp):
-        with open(fp, 'rb') as fin:
-            rv = pickle.load(fin)
-        return rv
-
 
 def train(labels):
     S = BayesDiseasedPixel(labels)
     for img_id, lesion_name, img, mask, bg in iter_imgs(labels):
         print(img_id, lesion_name)
         S.update_stats(img_id, lesion_name, img, mask, bg)
-        #  print(S)
-    S.save('./data/idrid_bayes_prior.pickle')
+    # save model
+    with open('./data/idrid_bayes_prior.pickle', 'wb') as fout:
+        fout.write(pickle.dumps(S))
     return S
 
 
 @functools.lru_cache()
 def load_pretrained(fp='./data/idrid_bayes_prior.pickle'):
-    return BayesDiseasedPixel.load(fp)
+    with open(fp, 'rb') as fin:
+        rv = pickle.loads(fin.read())
+    # do weird things to work around annoying pickle issues:
+    S = BayesDiseasedPixel(())
+    S.update(rv)
+    S.__dict__.update(rv)
+    return S
 
 
 def get_transmission_map(label_name, img, bg, model=None):
     if model is None:
         model = load_pretrained()
     rgb = img[~bg]
-    tmp = s.eval_posterior(label_name, rgb)
+    tmp = model.eval_posterior(label_name, rgb)
     rv = np.zeros(img.shape[:2])
     rv[~bg] = tmp
     return rv
 
 
-def bayes_sharpen(img, label_name, bg=None):
-    if bg is None:
-        bg = util.get_background(img)
+def bayes_sharpen(img, label_name, bg):
     t = get_transmission_map(label_name, img, bg)
     # hack
     #  t = mask.astype('float')
@@ -215,10 +210,11 @@ def bayes_sharpen(img, label_name, bg=None):
 
 
 if __name__ == "__main__":
-    s = load_pretrained()
+    #  s = load_pretrained()
     labels = IDRiD.labels
     #  labels = ['HE']
-    #  s = train(labels)
+    s = train(labels)
+    print('done train')
 
     for img_id, lesion_name, img, mask, bg in iter_imgs(labels):
         t = get_transmission_map(lesion_name, img, bg)
