@@ -24,6 +24,10 @@ def get_background(img):
     return np.dstack([(background.sum(2) == 3)] * 3)
 
 
+def get_foreground(img):
+    return ~get_background(img)
+
+
 def norm01(img, background=None):
     """normalize in [0,1] using global min and max.
     If background mask given, exclude it from normalization."""

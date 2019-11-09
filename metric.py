@@ -5,13 +5,13 @@ from scipy import stats
 import pandas as pd
 
 
-def ks_test_max_per_channel(img, mask, bg):
+def ks_test_max_per_channel(img, mask, focus_region):
     """Compute a 2-sample Kolmogorov-Smirnov statistic on each channel of image
     returning the max value across channels.  Ignore the background regions
 
     img - array of shape (x, y, z) with z being the channels.
     mask - bool array separating healthy from diseased pixels
-    bg - bool array containing the background region - area to ignore.
+    focus_region - bool array containing the area to not ignore.
 
     Return float in [0, 1]
         0 if the healthy and diseased pixels have the same distribution,
@@ -23,6 +23,7 @@ def ks_test_max_per_channel(img, mask, bg):
         mask - boolean array of shape (h, w)
             Ground truth labels identifying healthy vs diseased pixels.
     """
+    bg = ~focus_region
     assert mask.dtype == 'bool'
     assert mask.shape == img.shape[:2]
     maxstat = 0

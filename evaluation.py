@@ -1,12 +1,14 @@
 """
 Compare various methods
 """
+from collections import namedtuple
 import os
 import multiprocessing as mp
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import skimage
+from functools import partial
 
 import metric
 from idrid import IDRiD
@@ -51,38 +53,71 @@ def plot_qualitative(imgs_denoised):
     return f
 
 
-def _evaluation_args(imgs_denoised, labels, evaluation_func, background):
-    for method_name, modified_img in imgs_denoised.items():
-        for lesion_type, mask in labels.items():
-            for stat_name, func in evaluation_func.items():
-                yield (method_name, modified_img, lesion_type, mask, stat_name,
-                       func, background)
+_Zargs = namedtuple('_Zargs', [
+    'get_img_and_labels', 'get_focus_region', 'method_name', 'func',
+    'label_name', 'stat_name', 'eval_func'])
+
+def _evaluation_args(get_img_and_labels, get_focus_region,
+                     label_names, methods, evaluation_funcs):
+    for method_name, func in methods.items():
+        for label_name in label_names:
+            for stat_name, eval_func in evaluation_funcs.items():
+                yield _Zargs(
+                    get_img_and_labels, get_focus_region, method_name,
+                    func, label_name, stat_name, eval_func)
 
 
-def _evaluate(method_name, modified_img, lesion_type, mask, stat_name, func,
-              background):
+def _evaluate(Z):
+    modified_img, label_mask, focus_region = _evaluate_func(Z)
     return {
-        'Method': method_name,
-        'Evaluation Method': stat_name,
-        'Statistic': func(modified_img, mask, background),
-        'Lesion': lesion_type}
+        'Method': Z.method_name,
+        'Evaluation Method': Z.stat_name,
+        'Statistic': Z.eval_func(
+            modified_img, label_mask, focus_region),
+        'Class': Z.label_name}
+
+
+def _evaluate_func(Z, _ensure_labels=True):
+    img, labels = Z.get_img_and_labels()
+    try:
+        label_mask = labels[Z.label_name]
+    except:
+        if _ensure_labels:
+            return  # the label is not available for this image
+    focus_region = Z.get_focus_region(img)
+
+    modified_img = Z.func(img=img, focus_region=focus_region, **Z._asdict())
+    return modified_img, label_mask, focus_region
 
 
 def empirical_evaluation(
-        imgs_denoised, labels, evaluation_func, background,
-        plot=True, num_procs=None):
-    """Given a set of images, evaluate how well each one separates
-    the healthy from diseased pixels for a set of lesion types.
+        get_img_and_labels, get_focus_region, label_names, methods,
+        evaluation_funcs, plot=True, num_procs=None):
+    """For a given image,
+    evaluate how well each method separates the foreground from background
+    pixels of each given "label" mask, using one or more evaluation methods.
 
     Input:
-        imgs_denoised - dict[str, array] of form {method_name: output_img}
-            Images output from the set of methods we wish to evaluate
-        labels - dict[str,bool_array] of form {lesion_name: label_mask}
-            Boolean masks containing ground truth labels (ie lesion annotation)
-        evaluation_func - (func|dict[str,func])
+        get_img_and_labels - func
+            A serializable function with no inputs that should return a tuple
+            containing an image and a dict of label masks.  Signature:
+                f() -> (img, {'label1': binary_foreground_mask})
+            The function must support `pickle.dumps(get_img)` if num_procs!=1
+        get_focus_region - func
+            A serializable function that should receive as input an image
+            and return the focus region.
+            The function must support `pickle.dumps` if num_procs!=1
+        label_names - list[str]
+            List the labels to evaluate.
+            Assume are created by `get_img_and_labels`.  Assume that all labels
+            might not be available for all imgs.
+        methods - dict[str,func] of form {method_name: f}
+            Each function is expected to return an image and has signature:
+                f(img, *, focus_region, label_name) -> newimg
+                The focus_region is a binary mask which specifies which pixels
+                in the input img should use (1) or ignore (0).
+        evaluation_funcs - dict[str,func]
             Func expects as input two arrays and outputs a similarity score
-        background - bool_array
-            Boolean mask with a 1 at pixels to be ignored.
         plot - bool
             If False, don't plot.
             Otherwise, just let
@@ -94,18 +129,17 @@ def empirical_evaluation(
         seaborn.FacetGrid - the plot that was generated or None
     """
     # Compute the statistics on the given data.
-    args = _evaluation_args(imgs_denoised, labels, evaluation_func, background)
+    args = _evaluation_args( get_img_and_labels, get_focus_region, label_names, methods, evaluation_funcs)
     if num_procs == 1:
-        data = [_evaluate(*x) for x in args]
+        data = [_evaluate(x) for x in args]
     else:
-        pool = mp.Pool(num_procs)
-        data = pool.starmap(_evaluate, args)
-        del pool
+        with mp.Pool(num_procs) as pool:
+            data = pool.map(_evaluate, args)
     # format into nice result and plot
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(x for x in data if x is not None)
     if plot:
         fig = sns.catplot(
-            x='Lesion', y='Statistic', hue='Method', col='Evaluation Method',
+            x='Class', y='Statistic', hue='Method', col='Evaluation Method',
             data=df, kind='bar')
     else:
         fig = None
@@ -119,36 +153,41 @@ def evaluate_idrid_img(
     img, labels = dset.load_img(img_id)
 
     # set background pure black.
-    bg = util.get_background(img)
-    img[bg] = 0
+    #  bg = util.get_background(img)
+    #  img[bg] = 0
 
     # set location to save data
     os.makedirs(results_dir, exist_ok=True)
+    get_img_and_labels = partial(dset.load_img, img_id)
+    get_focus_region = util.get_foreground
+    label_names = ['MA', 'HE', 'EX', 'SE', 'OD']
 
-    # get the denoised images for all competing methods
-    if num_procs == 1:
-        imgs_denoised = {
-            name: func(img)
-            for name, func in competing_methods.all_methods.items()}
-    else:
-        pool = mp.Pool(num_procs)
-        rv = [(name, pool.apply_async(func, [img]))
-            for name, func in competing_methods.all_methods.items()]
-        imgs_denoised = {name: res.get() for name, res in rv}
-        del pool, rv
-
-    # generate plots
-    if qualitative:
-        fig = plot_qualitative(imgs_denoised)
-        fig.savefig(os.path.join(results_dir, 'qualitative_%s.png' % img_id))
     if empirical:
         df, fig2 = empirical_evaluation(
-            imgs_denoised, labels, metric.eval_methods.copy(), background=bg,
+            get_img_and_labels, get_focus_region, label_names,
+            competing_methods.all_methods.copy(), metric.eval_methods.copy(),
             num_procs=num_procs)
         fig2.savefig(os.path.join(results_dir, 'empirical_%s.png' % img_id))
         df.to_csv(
             os.path.join(results_dir, 'stats_%s.csv' % img_id),
             index=False)
+
+    if qualitative:
+        args = _evaluation_args(
+            get_img_and_labels, get_focus_region, label_names,
+            competing_methods.all_methods.copy(), {'ignore': 'ignore'})
+        if num_procs == 1:
+            imgs_denoised = {  # method_name: img
+                tup[2]: _evaluate_func(tup, _ensure_labels=False)
+                for tup in args}
+        else:
+            with mp.Pool(num_procs) as pool:
+                rv = [(tup[2], pool.apply_async(
+                    _evaluate_func, [tup], dict(_ensure_labels=False)))
+                    for tup in args]
+                imgs_denoised = {name: res.get()[0] for name, res in rv}
+        fig = plot_qualitative(imgs_denoised)
+        fig.savefig(os.path.join(results_dir, 'qualitative_%s.png' % img_id))
     return locals()
 
 

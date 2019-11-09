@@ -202,10 +202,10 @@ def get_transmission_map(label_name, img, bg, model=None):
     return rv
 
 
-def bayes_sharpen(img, bg=None):
+def bayes_sharpen(img, label_name, bg=None):
     if bg is None:
         bg = util.get_background(img)
-    t = get_transmission_map(lesion_name, img, bg)
+    t = get_transmission_map(label_name, img, bg)
     # hack
     #  t = mask.astype('float')
     t = (1-((t-t.mean())/t.std()+.5)).clip(0.15, 1)
