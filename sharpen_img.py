@@ -6,14 +6,16 @@ from matplotlib import pyplot as plt
 
 
 def sharpen(img, bg, t=0.15, blur_radius=30, blur_guided_eps=1e-2):
-    """Use distortion model to deblur image.  Equivalent to usharp mask.
+    """Use distortion model to deblur image.  Equivalent to usharp mask:
 
-        1/t * img - (1-1/t) * blurry(img).
+        1/t * img - (1-1/t) * blurry(img)
 
     Then, apply guided filter to smooth result but preserve edges.
 
     img - image to sharpen.
     bg - image background
+    t - the transmission map (inverse amount of sharpening)
+        can be scalar, matrix of same (h, w) as img, or 3 channel image.
     """
     # blurring (faster than ndi.gaussian_filter(I)
     A = cv2.ximgproc.guidedFilter(
@@ -26,9 +28,8 @@ def sharpen(img, bg, t=0.15, blur_radius=30, blur_guided_eps=1e-2):
 
     #  t_refined = np.ones(img.shape[:2]) * t
 
-    if np.shape(t):
+    if len(np.shape(t)) + 1 == len(img.shape):
         t_refined = np.expand_dims(t, -1).astype('float')
-        t_refined[bg] = 1  # division by zero
     else:
         t_refined = t
     J = (  # Eq. 22 of paper
