@@ -6,8 +6,10 @@ map can be thought of as probabilities.
 import numpy as np
 from matplotlib import pyplot as plt
 import pickle
+import functools
 
 
+from sharpen_img import sharpen
 from idrid import IDRiD
 import util
 
@@ -16,6 +18,11 @@ def iter_imgs(labels):
     dset = IDRiD('./data/IDRiD_segmentation')
     for img_id, img, labels in dset.iter_imgs(labels=labels):
         bg = util.get_background(img)[:, :, 0]
+
+        # center all images so rgb values are comparable.
+        # TODO: rescale so the average is 0.5, without messing [0, 1] bounds.
+        #  pixels += 0.5 - pixels.mean(axis=0, keepdims=True)
+
         for lesion_name, mask in labels.items():
             yield (img_id, lesion_name, img, mask, bg)
 
@@ -29,88 +36,83 @@ class BayesDiseasedPixel(dict):
           |                |           |         |
        posterior       likelihood    prior    marginal
 
+
+    Implementation note: due to numerical precision issues, some probabilities
+    are stored as counts.  Also, if the probabilities of one class are very
+    small, this class figures this out and during inference returns the
+    probability computed from the majority class via:
+        min( p(rgb|label), 1 - p(rgb|not(label)) )
     """
-    def __init__(self, labels, bins=256, compute_marginal=True):
+    def __init__(self, labels, bins=256):
         """
         labels - List[str] - list of labels (lesion names) considered
         bins - assume 256 pixels.
-        compute_marginal - whether to find and use p(r,g,b)
         """
         for label in labels:
-            self['p(rgb|%s,D)' % label] = np.zeros((bins, bins, bins))
+            self['H(rgb|%s,D)' % label] = np.zeros((bins, bins, bins))
             self['p(%s|D)' % label] = 0
             self['count_%s' % label] = 0
 
-            # TODO: remove after sanity
-            self['p(rgb|not(%s),D)' % label] = np.zeros((bins, bins, bins))
-        if compute_marginal:
-            self['p(rgb|D)'] = 0
+            self['H(rgb|not(%s),D)' % label] = np.zeros((bins, bins, bins))
+            self['H(rgb|D)'] = 0
         self.bins = bins
         self._set_of_observations = set()  # store the images considered to be
         #  able to compute p(rgb) without double counting images.  This is
         #  necessary since all images may not have masks for all labels
-        self.compute_marginal = compute_marginal
 
     def _update_count(self, label_name):
         self['count_%s' % label_name] += 1
 
     def _update_prior(self, label_name, mask, bg):
-        # update p(label|D).  assume p(I) = 1/|D|  (each image equal weight)
         k = 'p(%s|D)' % label_name
         p = mask.sum() / (~bg).sum()  # p(label|I)
         n = self['count_%s' % label_name]
-        self[k] = (1-1/n)*self[k] + p/n
+        self[k] = (1-1/n)*self[k] + p/n  # p(label|D) = \sum p(label|I,D)p(I|D)
 
     def _update_likelihood_and_marginal(self, label_name, img, mask, bg,
                                         update_marginal=True):
-        n = self['count_%s' % label_name]
+        #  n = self['count_%s' % label_name]
 
         def _likelihood():
             H_diseased, _ = np.histogramdd(
                 img[~bg & mask], bins=self.bins,
                 range=[(0, 1), (0, 1), (0, 1)])
-            k_diseased = 'p(rgb|%s,D)' % label_name
-            p = H_diseased / H_diseased.sum()  # p(rgb|lesion,I,D)
-            # update: p(rgb|lesion,I,D)p(I,D) = sum_I p(rgb|lesion,I,D)p(I)
-            self[k_diseased] = (1-1/n)*self[k_diseased] + p/n
-            assert np.allclose(self[k_diseased].sum(), 1)
+            k_diseased = 'H(rgb|%s,D)' % label_name
+            #  p = H_diseased / H_diseased.sum()  # p(rgb|lesion,I,D)
+            #  self[k_diseased] = (1-1/n)*self[k_diseased] + p/n
+            self[k_diseased] += H_diseased
             return H_diseased
-        H_diseased = _likelihood()
 
-        # TODO: after remove sanity, only run if update_marginal
-        H_healthy, _ = np.histogramdd(
-            img[~bg & ~mask], bins=self.bins, range=[(0, 1), (0, 1), (0, 1)])
+        def _likelihood_not_diseased():
+            H_healthy, _ = np.histogramdd(
+                img[~bg & ~mask],
+                bins=self.bins, range=[(0, 1), (0, 1), (0, 1)])
+            k_healthy = 'H(rgb|not(%s),D)' % label_name
+            #  p_healthy = H_healthy / H_healthy.sum()
+            #  self[k_healthy] = (1-1/n)*self[k_healthy] + p_healthy/n
+            self[k_healthy] += H_healthy
+            return H_healthy
 
         def _marginal():
-            k_marginal = 'p(rgb|D)'
+            k_marginal = 'H(rgb|D)'
             H = H_diseased + H_healthy
-            p = H / H.sum()  # p(rgb|I,D)
-            self[k_marginal] = (1-1/n)*self[k_marginal] + p/n  # p(rgb|I,D)p(I|D)
-            assert np.allclose(self[k_marginal].sum(), 1)
+            #  p = H / H.sum()  # p(rgb|I,D)
+            #  self[k_marginal] = (1-1/n)*self[k_marginal] + p/n
+            self[k_marginal] += H
+
+        H_healthy = _likelihood_not_diseased()
+        H_diseased = _likelihood()
         if update_marginal:
             _marginal()
 
-        def _likelihood_not_diseased():  # sanity checking
-            # add healthy p(rgb|healthy,D) for sanity check?
-            # TODO: remove this after sanity check done.
-            k_healthy = 'p(rgb|not(%s),D)' % label_name
-            p_healthy = H_healthy / H_healthy.sum()
-            self[k_healthy] = (1-1/n)*self[k_healthy] + p_healthy/n
-            assert np.allclose(self[k_healthy].sum(), 1)
-        _likelihood_not_diseased()
-
     def update_stats(self, img_id, label_name, img, mask, bg):
-        # center all images so rgb values are comparable.
-        # TODO: rescale so the average is 0.5, without messing [0, 1] bounds.
-        #  pixels += 0.5 - pixels.mean(axis=0, keepdims=True)
-
         self._update_count(label_name)
         is_new_img = img_id not in self._set_of_observations
 
         self._update_prior(label_name, mask, bg)
         self._update_likelihood_and_marginal(
             label_name, img, mask, bg,
-            update_marginal=self.compute_marginal and is_new_img)
+            update_marginal=is_new_img)
         self._set_of_observations.add(img_id)
 
     def eval_posterior(self, label_name, rgb):
@@ -127,21 +129,41 @@ class BayesDiseasedPixel(dict):
         ri, gi, bi = np.searchsorted(
             np.linspace(0, 1, self.bins)[1:],
             rgb.ravel(), side='right').reshape(rgb.shape).T
+
         # compute the probability
         prior = self['p(%s|D)' % label_name]
-        likelihood = self['p(rgb|%s,D)' % label_name][ri, gi, bi]
-        marginal = self['p(rgb|D)'][ri, gi, bi]
+        c_marginal = self['H(rgb|D)'][ri, gi, bi]
+        marginal = \
+            c_marginal / len(self._set_of_observations) / c_marginal.sum()
 
-        l1 = self['p(rgb|not(%s),D)' % label_name][ri, gi, bi]
-        X2 = (1 - prior) * l1 / marginal
+        c_likelihood = self['H(rgb|%s,D)' % label_name][ri, gi, bi]
+        likelihood = \
+            c_likelihood / self['count_%s' % label_name] / c_likelihood.sum()
+        X = likelihood / marginal * prior
 
-        # TODO: add this after verify no missing data on the training set.
-        #  missing_data_mask = marginal == 0
+        # numerical precision correction when the marginal prob is very small.
+        #  (or at least I believe that is the issue)
+        l1 = self['H(rgb|not(%s),D)' % label_name][ri, gi, bi]
+        l1 = l1 / l1.sum() / self['count_%s' % label_name]
+        X2 = l1 / marginal * prior
+        X2 = l1 / c_marginal\
+            * (c_marginal.sum() / l1.sum())\
+            * (len(self._set_of_observations) / self['count_%s' % label_name] )
+        #  X[X > 1] = X2[X > 1]
+
+        # still need this to fix numerical stability when marginal is 1e-12
+        X = X.clip(0, 1)
+
+        # TODO: gracefully handle missing data in the training set.
+        #  missing_data_mask = np.isnan(X)
+        #  assert missing_data_mask.sum() == 0
         #  likelihood[missing_data_mask] = 0  # 0 probability for missing data
         #  marginal[missing_data_mask] = 1  # avoid spurious error
-        X = prior * likelihood# / marginal
-        #  assert (X <= 1).all()
-        assert np.allclose(1, X2 + X)
+        # fix numerical precision issues
+
+        #  print(np.round(np.array([np.median(X), np.median(1-X2), X.min(), X.max(), (1-X2).min(), (1-X2).max()]), 5))
+        #  assert (X<=1).all()
+        #  assert (X>=0).all()
         return X
 
     def save(self, fp):
@@ -165,37 +187,62 @@ def train(labels):
     return S
 
 
+@functools.lru_cache()
 def load_pretrained(fp='./data/idrid_bayes_prior.pickle'):
     return BayesDiseasedPixel.load(fp)
 
 
-def get_transmission_map(label_name, img, bg):
+def get_transmission_map(label_name, img, bg, model=None):
+    if model is None:
+        model = load_pretrained()
     rgb = img[~bg]
     tmp = s.eval_posterior(label_name, rgb)
-
-    #  assert tmp.max() <= 1
-    #  assert tmp.min() >= 0
     rv = np.zeros(img.shape[:2])
-    rv[~bg] = tmp  # / tmp.max()
+    rv[~bg] = tmp
     return rv
+
+
+def bayes_sharpen(img, bg=None):
+    if bg is None:
+        bg = util.get_background(img)
+    t = get_transmission_map(lesion_name, img, bg)
+    # hack
+    #  t = mask.astype('float')
+    t = (1-((t-t.mean())/t.std()+.5)).clip(0.15, 1)
+    t[bg] = 0
+    sharp = sharpen(img, bg, t=t)
+    return sharp
+
 
 if __name__ == "__main__":
     s = load_pretrained()
     labels = IDRiD.labels
-    labels = ('HE', )
+    #  labels = ['HE']
     #  s = train(labels)
 
     for img_id, lesion_name, img, mask, bg in iter_imgs(labels):
         t = get_transmission_map(lesion_name, img, bg)
-        print(t[mask].mean())
+        # hack
+        #  t = mask.astype('float')
+        t = (1-((t-t.mean())/t.std()+.5)).clip(0.15, 1)
+        t[bg] = 0
+        #  t = 0.1
         #  assert (t[mask] >0).all()  # model missed a pixel of training img.
     #  #      print(img.min(), img.max())
     #  #      print('===')
     #  #      print(img_id, lesion_name)
         #  plt.clf()
+        img[bg] = 0
+        sharp = sharpen(img, bg, t=t)
+        plt.figure(num=1)
+        plt.clf()
+        f, (a,b,c) = plt.subplots(1, 3, num=1, figsize=(12, 12))
+        f.suptitle('%s %s' % (img_id, lesion_name))
 
-        #  plt.imshow(np.dstack([t,mask, np.zeros_like(t)]))
-        #  plt.pause(0.01)
+        a.imshow(sharpen(img, bg, t=.15))
+        b.imshow(sharp)
+        c.imshow(np.dstack([t,mask, t>0]))
+        plt.pause(0.01)
         #  f, (a, b) = plt.subplots(2, 1, num=1, sharex=True, sharey=True)
         #  a.imshow(img)
     #      img[~mask] = 0
