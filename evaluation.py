@@ -41,12 +41,12 @@ def plot_img_and_hist(image, axes, bins=256):
 
 
 def plot_qualitative(imgs_denoised):
-    f, axs = plt.subplots(2, 4)
+    f, axs = plt.subplots(2, 4, figsize=(12, 8))
     for ax in axs.ravel():
         ax.axis('off')
     for (method_name, img), ax in zip(imgs_denoised.items(), axs.ravel()):
         ax.imshow(img)
-        ax.set_title(method_name, {'fontsize': 'small'})
+        ax.set_title(method_name)
     f.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=.01, hspace=-.4)
     return f
 
