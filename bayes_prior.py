@@ -5,7 +5,8 @@ map can be thought of as probabilities.
 """
 import numpy as np
 from matplotlib import pyplot as plt
-import dill as pickle
+#  import dill as pickle
+import pickle
 import functools
 
 
@@ -144,9 +145,9 @@ def train(labels):
     for img_id, lesion_name, img, mask, fg in iter_imgs(labels):
         print(img_id, lesion_name)
         S.update_stats(img_id, lesion_name, img, mask, fg)
-    # save model
+    # save model parameters
     with open('./data/idrid_bayes_prior.pickle', 'wb') as fout:
-        fout.write(pickle.dumps(S))
+        fout.write(pickle.dumps(dict(S)))
     return S
 
 
@@ -154,10 +155,8 @@ def train(labels):
 def load_pretrained(fp='./data/idrid_bayes_prior.pickle'):
     with open(fp, 'rb') as fin:
         rv = pickle.loads(fin.read())
-    # do weird things to work around annoying pickle issues:
     S = BayesDiseasedPixel(())
     S.update(rv)
-    S.__dict__.update(rv.__dict__)
     return S
 
 
@@ -194,6 +193,7 @@ if __name__ == "__main__":
     #  s = load_pretrained()
     s = train(labels)
     print('done train')
+    import sys ; sys.exit()
 
     for img_id, lesion_name, img, mask, fg in iter_imgs(labels):
 
