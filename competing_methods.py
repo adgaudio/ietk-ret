@@ -56,9 +56,9 @@ all_methods = {
     'Illuminated (DCP)': illuminate_dcp,
     'Illuminated-Dehazed (DCP)': illuminate_dehaze_dcp,
     'Sharpen, t=0.15': sharpen,
-    'Bayes Sharpen, t>=0.15': bayes_sharpen,
+    #  'Bayes Sharpen, t>=0.15': bayes_sharpen,
     # TODO: MRSRC
-    #  'Contrast Stretching': contrast_stretching,
+    'Contrast Stretching': contrast_stretching,
     'Histogram Eq.': hist_eq,
     'Adaptive Histogram Eq.': adaptive_hist_eq,
 }
