@@ -84,6 +84,8 @@ def _evaluate_func(Z, _ensure_labels=True):
     except:
         if _ensure_labels:
             return  # the label is not available for this image
+        else:
+            label_mask = None
     focus_region = Z.get_focus_region(img)
 
     # center image
@@ -168,7 +170,7 @@ def evaluate_idrid_img(
     if empirical:
         df, fig2 = empirical_evaluation(
             get_img_and_labels, get_focus_region, label_names,
-            competing_methods.all_methods.copy(), metric.eval_methods.copy(),
+            competing_methods.all_methods.copy(), metric.single_image_eval_methods.copy(),
             num_procs=num_procs)
         fig2.savefig(os.path.join(results_dir, 'empirical_%s.png' % img_id))
         df.to_csv(

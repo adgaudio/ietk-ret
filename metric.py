@@ -37,7 +37,7 @@ def ks_test_max_per_channel(img, mask, focus_region):
     return maxstat
 
 
-eval_methods = {
+single_image_eval_methods = {
     'KS Test, max of the channels': ks_test_max_per_channel  # test if healthy separable from diseased.
     # need test if lesions (MA,HE,etc) have the same intensities across images.  how about:  var(sum_imgs(p(rgb|lesion=MA)))  where p(rgb|lesion) is a 256*3 vector for each img.
 }
