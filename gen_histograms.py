@@ -30,39 +30,63 @@ def iter_imgs(dset, ns):
                 if method_name.startswith('Bayes Sharpen, '):
                     # hack: this method requires the lesion name to load the appropriate prior.
                     modified_img = func(img=img, focus_region=focus_region, label_name=lesion_name)
-                    print('run')
                 elif modified_img is None:
                     modified_img = func(img=img, focus_region=focus_region)
-                    print('run')
-                healthy, diseased = sep_pixels(
-                    modified_img, focus_region, mask)
+                try:
+                    healthy, diseased = sep_pixels(
+                        modified_img, focus_region, mask)
+                except:
+                    print("FAIL", img_id, lesion_name, method_name, type(img), type(focus_region))
+                    raise
                 yield (img_id, method_name, lesion_name, healthy, diseased)
+
+
+def gen_histogram(img_id, method_name, lesion_name, healthy, diseased, **junk):
+    #  for ch in [0,1,2]:
+        #  plt.hist(healthy[:, ch], bins=256, range=(0,1), density=True, label='healthy', alpha=.4)
+        #  plt.hist(diseased[:, ch], bins=256, range=(0,1), density=True, label='diseased', alpha=.4)
+        #  plt.title(f'{img_id} {lesion_name} {method_name} -- channel {ch}')
+        #  plt.legend()
+        #  plt.show()
+    color = {0: 'red', 1: 'green', 2: 'blue'}
+    fig, axs = plt.subplots(3, 1, num=1)
+
+    for ax, ch in zip(axs.ravel(), [0,1,2]):
+        ax.hist(healthy[:, ch]*255, bins=256, range=(0,256), density=True, label='healthy', alpha=.3, color=color[ch], lw=0)
+        ax.hist(diseased[:, ch]*255, bins=256, range=(0,256), density=True, label='diseased', alpha=.7, color=color[ch], lw=0)
+        ax.legend()
+        ax.set_title(f'channel: {color[ch]}')
+    fig.suptitle(f'{img_id} {lesion_name} {method_name}')
+    return fig
 
 
 def main(ns):
     dset = IDRiD(ns.data_dir)
     os.makedirs(ns.save_dir, exist_ok=True)
+    os.makedirs(ns.save_dir_data, exist_ok=True)
     for (img_id, method_name, lesion_name, healthy, diseased) in iter_imgs(dset, ns):
-        #  for ch in [0,1,2]:
-            #  plt.hist(healthy[:, ch], bins=256, range=(0,1), density=True, label='healthy', alpha=.4)
-            #  plt.hist(diseased[:, ch], bins=256, range=(0,1), density=True, label='diseased', alpha=.4)
-            #  plt.title(f'{img_id} {lesion_name} {method_name} -- channel {ch}')
-            #  plt.legend()
-            #  plt.show()
-        color = {0: 'red', 1: 'green', 2: 'blue'}
-        fig, axs = plt.subplots(3, 1)
-
-        for ax, ch in zip(axs.ravel(), [0,1,2]):
-            ax.hist(healthy[:, ch], bins=256, range=(0,1), density=True, label='healthy', alpha=.3, color=color[ch], lw=0)
-            ax.hist(diseased[:, ch], bins=256, range=(0,1), density=True, label='diseased', alpha=.7, color=color[ch], lw=0)
-            ax.legend()
-            ax.set_title(f'channel: {color[ch]}')
-        fig.suptitle(f'{img_id} {lesion_name} {method_name}')
-        fig.savefig(join(ns.save_dir,
-                         f'{img_id}-{lesion_name.replace(" ","_")}-{method_name.replace(" ","_")}.png'))
-        if ns.show_plot:
-            plt.show()
-
+        filename_prefix = f'{img_id}-{lesion_name.replace(" ","_")}-{method_name.replace(" ","_")}'
+        img_fp = join(ns.save_dir, f'{filename_prefix}.png')
+        data_fp = join(ns.save_dir_data, f'{filename_prefix}.npz')
+        if os.path.exists(img_fp):
+            print(f'Image file exists, not re-creating: {img_fp}')
+        else:
+            fig = gen_histogram(**locals())
+            fig.savefig(img_fp)
+            if ns.show_plot:
+                plt.show()
+            else:
+                plt.close(fig)
+        if os.path.exists(data_fp):
+            print(f'Data file exists, not re-creating: {data_fp}')
+        else:
+            hs, ds = [], []
+            for ch in [0,1,2]:
+                h, _ = np.histogram(healthy[:, ch]*255, bins=256, range=(0,256))
+                d, _ = np.histogram(diseased[:, ch]*255, bins=256, range=(0,256))
+                hs.append(h)
+                ds.append(d)
+            np.savez_compressed(data_fp, healthy=np.stack(hs), diseased=np.stack(ds))
 
 
 def bap():
@@ -72,6 +96,7 @@ def bap():
     p.add_argument('--methods', nargs='*', default=tuple(competing_methods.all_methods.keys()), choices=tuple(competing_methods.all_methods.keys()), help='list of methods named in competing_methods.all_methods')
     p.add_argument('--data-dir', default='./data/IDRiD_segmentation', help='Location of the IDRiD dataset')
     p.add_argument('--save-dir', default='./data/histograms_idrid', help='Location of the IDRiD dataset')
+    p.add_argument('--save-dir-data', default='./data/histograms_idrid_data', help='Location of the IDRiD dataset')
     p.add_argument('--show-plot', action='store_true', help='by default, dont show plot.  just save a figure to disk')
     return p
 

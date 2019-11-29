@@ -12,8 +12,8 @@ def contrast_stretching(img, **junk):
     return exposure.rescale_intensity(img, in_range=(p2, p98))
 
 
-def hist_eq(img, **junk):
-    return exposure.equalize_hist
+def hist_eq(img, focus_region, **junk):
+    return exposure.equalize_hist(img, mask=focus_region)
 
 
 def adaptive_hist_eq(img, **junk):
