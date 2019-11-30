@@ -8,6 +8,7 @@ import metric
 import multiprocessing
 from itertools import repeat
 import numpy as np
+import scipy.optimize
 
 
 NUM_IMG_SAMPLE = 30  # number of training sample loaded from IDRiD dataset, should be <= 54
@@ -114,7 +115,7 @@ class Environment:
         """
         transform_matrix = weights.reshape(3, 3)
         # get evaluation images by performing transformation on each image
-        evl_imgs = self.p.starmap(get_transformed_img, zip(self.images, repeat(transform_matrix)))
+        evl_imgs = [get_transformed_img(x, y) for (x,y) in zip(self.images, repeat(transform_matrix))]
 
         # evaluate the result score of each image
         result = self.p.starmap(get_score_per_img, zip(evl_imgs, self.labels, self.focus_regions))
@@ -142,16 +143,24 @@ def get_score_per_img(img, labels, focus_region):
 
     return score / len(labels)
 
+def optimze_func(weights, env):
+    return 1 - env.evaluate(weights)
 
 if __name__ == "__main__":
     num_cores = multiprocessing.cpu_count()
 
     env = Environment(num_cores, NUM_IMG_SAMPLE)
+    usingCMA = False
 
-    cma = CMAES(env, NUM_WEIGHT_SAMPLE, 0.5, 10, NUM_ITER)
-
-    cma.train()
+    if usingCMA:
+        # use cmaes
+        cma = CMAES(env, NUM_WEIGHT_SAMPLE, 0.5, 10, NUM_ITER)
+        cma.train()
+        transform_matrix = cma.get_result().reshape(3, 3)
+    else:
+        # using scipy.optimize
+        transform_matrix = scipy.optimize.minimize(optimze_func, np.random.rand(9), env)
 
     # get the training result
-    transform_matrix = cma.get_result().reshape(3, 3)
+    
     np.save('./transform_matrix.npy', transform_matrix)
