@@ -12,7 +12,7 @@ import scipy.optimize
 
 
 NUM_IMG_SAMPLE = 30  # number of training sample loaded from IDRiD dataset, should be <= 54
-NUM_ITER = 100  # number of training iteration for cmaes
+NUM_ITER = 15  # number of training iteration for cmaes
 NUM_WEIGHT_SAMPLE = 20  # number of samples generated at each cma iteration
 
 
@@ -48,7 +48,7 @@ class CMAES:
         """
         Train CMA-ES self.num_iter iterations.
         For each iteration, generate self.n weights according to self.mu and self.S,
-        then evaluate the weights to get the score, 
+        then evaluate the weights to get the score,
         then update self.mu and self.S according to the top self.p proportion of members
         """
 
