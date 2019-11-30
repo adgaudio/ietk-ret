@@ -3,8 +3,9 @@ import pandas as pd
 import glob
 import re
 import seaborn as sns
+from os.path import join
+import os
 from matplotlib import pyplot as plt
-
 
 
 PATTERN = re.compile('(?P<img_id>IDRiD_\d{2})-(?P<lesion_name>..)-(?P<method_name>.*?).npz$')
@@ -19,35 +20,43 @@ def get_data(fp):
 
 
 def main():
+    save_img_dir='./data/histograms_idrid_plots'
+    os.makedirs(save_img_dir, exist_ok=True)
     fps = glob.glob('./data/histograms_idrid_data/*.npz')
     print(fps[0])
     metadatas = [PATTERN.search(fp).groupdict() for fp in fps]
 
     meta = pd.DataFrame(metadatas)
 
+    for healthy_or_diseased in ['healthy', 'diseased']:
+        # bar plot of standard deviation of avg histogram, one subplot per
+        # channel, each containing many models
+        df = get_consistency_scores(fps, meta).xs(healthy_or_diseased)
+        df['std_as_pct'] = df.groupby(['channel', 'lesion_name'])['std'].transform(lambda x: x/x.max())
+        fig = sns.catplot(x='lesion_name', y='std', hue='method_name', col='channel', data=df.reset_index(), kind='bar')
+        fig.set_titles("%s {col_name} {col_var}" % (healthy_or_diseased))
+        fig.savefig(join(save_img_dir, f'std_hists_{healthy_or_diseased}.png'))
 
-    # testing:  got the histograms for each lesion, method, channel, and
-    # averaged over whole dataset.
-    hists = get_hists(fps, meta)
-    for lesion in ['MA', 'HE', 'EX', 'SE']:
-        fig = sns.catplot(x='bin', y='hist', hue='method_name', col='channel', data=hists.query(f'lesion_name=="{lesion}"').query('bin > 0'))
-        fig.set_titles("%s {col_name} {col_var}" % lesion)
+        # show the histograms for each lesion, method, channel, and
+        # averaged over whole dataset.  do it for all healthy and diseased imgs
+        hists = get_hists(fps, meta, healthy_or_diseased)
+        for lesion in ['MA', 'HE', 'EX', 'SE']:
+            fig = sns.catplot(x='bin', y='hist', hue='method_name', col='channel', data=hists.query(f'lesion_name=="{lesion}"').query('bin > 0'))
+            fig.set_titles("%s %s {col_name} {col_var}" % (healthy_or_diseased, lesion))
+            fig.savefig(join(save_img_dir, f'avg_hists_{healthy_or_diseased}_{lesion}.png'))
 
-    df = get_consistency_scores(fps, meta).xs('diseased')
-    df['std_as_pct'] = df.groupby(['channel', 'lesion_name'])['std'].transform(lambda x: x/x.max())
-    fig = sns.catplot(x='lesion_name', y='std', hue='method_name', col='channel', data=df.reset_index(), kind='bar')
     globals().update(locals())  # TODO: remove after testing done
 
 
-def get_hists(fps, meta):
-    return pd.concat(list(_get_hists(fps, meta)))
+def get_hists(fps, meta, healthy_or_diseased='diseased'):
+    return pd.concat(list(_get_hists(fps, meta, healthy_or_diseased)))
 
 
-def _get_hists(fps, meta):
+def _get_hists(fps, meta, healthy_or_diseased):
     for grp_id, grp in meta.groupby(['lesion_name', 'method_name']):
         data = [ get_data(fps[i]) for i in grp.index ]
         #  healthy = np.stack([x['healthy'] for x in data])
-        diseased = np.stack([x['diseased'] for x in data])
+        diseased = np.stack([x[healthy_or_diseased] for x in data])
         # axis shape:  (images, channels, histogram)
         assert diseased.shape[1] == 3, 'bug'
         df = pd.DataFrame(diseased.mean(axis=0), index=['red', 'green', 'blue'], columns=range(256))
