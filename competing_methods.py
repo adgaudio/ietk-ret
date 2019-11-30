@@ -4,6 +4,7 @@ import dehaze
 import numpy as np
 import sharpen_img
 import bayes_prior
+import MSRCR
 
 
 def contrast_stretching(img, **junk):
@@ -42,23 +43,33 @@ def sharpen(img, focus_region, **junk):
     return sharpen_img.sharpen(img, ~focus_region[:, :, 0], t=0.15)
 
 
+def illuminate_sharpen(img, **kws):
+    img = illuminate_dcp(img, **kws)
+    return sharpen(img, **kws)
+
+
 def bayes_sharpen(img, focus_region, label_name, **junk):
     return bayes_prior.bayes_sharpen(
         img, label_name, focus_region=focus_region[:, :, 0])
-#  def bayes_prior(img):
-    #  model = BayesDiseasedPixel.load('./idrid_bayes_prior.pickle')
-    #  t =
+
+
+def msrcr(img, focus_region, **junk):
+    img = np.ma.masked_array(img*255, ~focus_region)
+    im_out = msrcr.MSRCR(img, 60, 3)
+    return im_out
+
 
 all_methods = {
     # method_name: func
     'Unmodified Image': identity,
     'Dehazed (DCP)': dehaze_dcp,
-    'Illuminated (DCP)': illuminate_dcp,
-    'Illuminated-Dehazed (DCP)': illuminate_dehaze_dcp,
+    'Illuminate (DCP)': illuminate_dcp,
+    'Illuminate Dehaze (DCP)': illuminate_dehaze_dcp,
     'Sharpen, t=0.15': sharpen,
+    'Illuminate Sharpen': illuminate_sharpen,
     #  'Bayes Sharpen, t>=0.15': bayes_sharpen,
-    # TODO: MRSRC
     'Contrast Stretching': contrast_stretching,
     'Histogram Eq.': hist_eq,
     'Adaptive Histogram Eq.': adaptive_hist_eq,
+    'MSRCR (Retinex)': msrcr,
 }
