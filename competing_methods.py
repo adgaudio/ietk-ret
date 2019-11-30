@@ -4,7 +4,7 @@ import dehaze
 import numpy as np
 import sharpen_img
 import bayes_prior
-import MSRCR
+import msrcr
 
 
 def contrast_stretching(img, **junk):
@@ -53,7 +53,7 @@ def bayes_sharpen(img, focus_region, label_name, **junk):
         img, label_name, focus_region=focus_region[:, :, 0])
 
 
-def msrcr(img, focus_region, **junk):
+def msrcr_retinex(img, focus_region, **junk):
     img = np.ma.masked_array(img*255, ~focus_region)
     im_out = msrcr.MSRCR(img, 60, 3)
     return im_out
@@ -71,5 +71,5 @@ all_methods = {
     'Contrast Stretching': contrast_stretching,
     'Histogram Eq.': hist_eq,
     'Adaptive Histogram Eq.': adaptive_hist_eq,
-    'MSRCR (Retinex)': msrcr,
+    'MSRCR (Retinex)': msrcr_retinex,
 }
