@@ -63,8 +63,8 @@ all_methods = {
     # method_name: func
     'Unmodified Image': identity,
     'Dehazed (DCP)': dehaze_dcp,
-    'Illuminate (DCP)': illuminate_dcp,
-    'Illuminate Dehaze (DCP)': illuminate_dehaze_dcp,
+    'Illuminated (DCP)': illuminate_dcp,
+    'Illuminated-Dehazed (DCP)': illuminate_dehaze_dcp,
     'Sharpen, t=0.15': sharpen,
     'Illuminate Sharpen': illuminate_sharpen,
     #  'Bayes Sharpen, t>=0.15': bayes_sharpen,
