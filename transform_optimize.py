@@ -159,8 +159,6 @@ if __name__ == "__main__":
         transform_matrix = cma.get_result().reshape(3, 3)
     else:
         # using scipy.optimize
-        transform_matrix = scipy.optimize.minimize(optimze_func, np.random.rand(9), env)
+        transform_matrix = scipy.optimize.minimize(optimze_func, np.random.rand(9), env).reshape(3, 3)
 
-    # get the training result
-    
     np.save('./transform_matrix.npy', transform_matrix)
