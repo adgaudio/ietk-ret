@@ -49,9 +49,9 @@ def save_img(fp):
 if __name__ == "__main__":
     ns = bap().parse_args()
 
-    #  fps = glob.glob(join(f'{ns.data_dir}', '*.npz'))
-    fps = ['data/histograms_idrid_data/IDRiD_39-MA-Unmodified_Image.npz',
-        'data/histograms_idrid_data/IDRiD_39-MA-Illuminate_Sharpen.npz']
+    fps = glob.glob(join(f'{ns.data_dir}', '*.npz'))
+    #  fps = ['data/histograms_idrid_data/IDRiD_39-MA-Unmodified_Image.npz',
+        #  'data/histograms_idrid_data/IDRiD_39-MA-Illuminate_Sharpen.npz']
 
 
     os.makedirs(ns.save_dir, exist_ok=True)
