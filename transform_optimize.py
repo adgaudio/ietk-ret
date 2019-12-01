@@ -10,6 +10,7 @@ from itertools import repeat
 import numpy as np
 import scipy.optimize
 
+from eval_separability import ks_scores_from_hist
 
 NUM_IMG_SAMPLE = 30  # number of training sample loaded from IDRiD dataset, should be <= 54
 NUM_ITER = 15  # number of training iteration for cmaes
@@ -92,7 +93,7 @@ class Environment:
         self.images = []
         self.labels = []
         self.focus_regions = []
-        self.p = p = multiprocessing.Pool(processes = num_workers)
+        self.num_workers = num_workers
         self.num_weights = 9  # number of weights of current environment
 
         dset = IDRiD('./data/IDRiD_segmentation')
@@ -100,7 +101,7 @@ class Environment:
 
         for i in range(num_samples):
             _, img, labels = next(dset_iter)
-            fg = util.get_foreground(img)
+            fg = util.get_foreground(img)[:,:,0]
 
             self.images.append(img)
             self.labels.append(labels)
@@ -118,7 +119,11 @@ class Environment:
         evl_imgs = [get_transformed_img(x, y) for (x,y) in zip(self.images, repeat(transform_matrix))]
 
         # evaluate the result score of each image
-        result = self.p.starmap(get_score_per_img, zip(evl_imgs, self.labels, self.focus_regions))
+        if self.num_workers == 1:
+            result = [get_score_per_img(a,b,c) for a,b,c in zip(evl_imgs, self.labels, self.focus_regions)]
+        else:
+            with multiprocessing.Pool(processes=self.num_workers) as p:
+                result = p.starmap(get_score_per_img, zip(evl_imgs, self.labels, self.focus_regions))
 
         return np.mean(result)
 
@@ -136,18 +141,31 @@ def get_score_per_img(img, labels, focus_region):
     """
     Return the average score of given image with its labels of all disease
     """
-    score = 0
-
-    for label_mask in labels.values():
-        score += metric.ks_test_max_per_channel(img, label_mask, focus_region)
-
-    return score / len(labels)
+    #  a,b,c = (evl_imgs[0], self.labels[0], self.focus_regions[0][:, :, 0])
+    ks_score = 0
+    for mask in labels.values():
+        a,b,c = img, mask, focus_region
+        h = healthy_pixels = a[~b&c]
+        d = diseased_pixels = a[b&c]
+        H = np.histogramdd(h, bins=256, range=[(0,a.max())]*3)[0]
+        D = np.histogramdd(d, bins=256, range=[(0,a.max())]*3)[0]
+        _ks_score = np.abs(
+            (H/H.sum()).ravel().cumsum() - (D/D.sum()).ravel().cumsum()).max()
+        if not np.isnan(_ks_score):
+            ks_score += _ks_score
+        else:
+            print('nan ks score due to transformed color channel being empty')
+    return ks_score / len(labels)
 
 def optimze_func(weights, env):
     return 1 - env.evaluate(weights)
 
 if __name__ == "__main__":
-    num_cores = multiprocessing.cpu_count()
+    import sys
+    try:
+        num_cores = int(sys.argv[1])
+    except:
+        num_cores = multiprocessing.cpu_count()
 
     env = Environment(num_cores, NUM_IMG_SAMPLE)
     usingCMA = False
@@ -159,6 +177,8 @@ if __name__ == "__main__":
         transform_matrix = cma.get_result().reshape(3, 3)
     else:
         # using scipy.optimize
-        transform_matrix = scipy.optimize.minimize(optimze_func, np.random.rand(9), env).reshape(3, 3)
+        result = scipy.optimize.minimize(optimze_func, np.random.rand(9), env, tol=0.1)
+        print(result)
+        transform_matrix = result.x.reshape(3,3)
 
     np.save('./transform_matrix.npy', transform_matrix)
