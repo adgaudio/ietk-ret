@@ -68,6 +68,7 @@ def main(ns):
         filename_prefix = f'{img_id}-{lesion_name.replace(" ","_")}-{method_name.replace(" ","_")}'
         img_fp = join(ns.save_dir, f'{filename_prefix}.png')
         data_fp = join(ns.save_dir_data, f'{filename_prefix}.npz')
+        data_3d_fp = join(ns.save_dir_data, f'hist3d-{filename_prefix}.npz')
         if os.path.exists(img_fp):
             print(f'Image file exists, not re-creating: {img_fp}')
         else:
@@ -87,6 +88,12 @@ def main(ns):
                 hs.append(h)
                 ds.append(d)
             np.savez_compressed(data_fp, healthy=np.stack(hs), diseased=np.stack(ds))
+        if os.path.exists(data_3d_fp):
+            print(f'3d histogram data file exists, not re-creating: {data_3d_fp}')
+        else:
+            H = np.histogramdd(healthy, bins=256, range=[(0,256)]*3)[0]
+            D = np.histogramdd(diseased, bins=256, range=[(0,256)]*3)[0]
+            np.savez_compressed(data_3d_fp, healthy=H, diseased=D)
 
 
 def bap():
