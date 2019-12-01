@@ -41,8 +41,9 @@ def main():
         # averaged over whole dataset.  do it for all healthy and diseased imgs
         hists = get_hists(fps, meta, healthy_or_diseased)
         for lesion in ['MA', 'HE', 'EX', 'SE']:
-            fig = sns.catplot(x='bin', y='hist', hue='method_name', col='channel', data=hists.query(f'lesion_name=="{lesion}"').query('bin > 0'))
+            fig = sns.catplot(x='pixel_intensity', y='hist', hue='method_name', col='channel', data=hists.query(f'lesion_name=="{lesion}"').query('pixel_intensity > 0 and pixel_intensity < 256'))
             fig.set_titles("%s %s {col_name} {col_var}" % (healthy_or_diseased, lesion))
+            fig.set_xticklabels([])
             fig.savefig(join(save_img_dir, f'avg_hists_{healthy_or_diseased}_{lesion}.png'))
 
     globals().update(locals())  # TODO: remove after testing done
@@ -60,7 +61,7 @@ def _get_hists(fps, meta, healthy_or_diseased):
         # axis shape:  (images, channels, histogram)
         assert diseased.shape[1] == 3, 'bug'
         df = pd.DataFrame(diseased.mean(axis=0), index=['red', 'green', 'blue'], columns=range(256))
-        df.columns.name = 'bin'
+        df.columns.name = 'pixel_intensity'
         df.index.name = 'channel'
         df2 = df.stack()
         df2.name = 'hist'
