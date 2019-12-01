@@ -143,22 +143,26 @@ def get_score_per_img(img, labels, focus_region):
     """
     #  a,b,c = (evl_imgs[0], self.labels[0], self.focus_regions[0][:, :, 0])
     ks_score = 0
+    N = len(labels)
     for mask in labels.values():
         a,b,c = img, mask, focus_region
         h = healthy_pixels = a[~b&c]
         d = diseased_pixels = a[b&c]
-        H = np.histogramdd(h, bins=256, range=[(0,a.max())]*3)[0]
-        D = np.histogramdd(d, bins=256, range=[(0,a.max())]*3)[0]
+        H = np.histogramdd(h, bins=256, range=[(0,1)]*3)[0]
+        D = np.histogramdd(d, bins=256, range=[(0,1)]*3)[0]
         _ks_score = np.abs(
             (H/H.sum()).ravel().cumsum() - (D/D.sum()).ravel().cumsum()).max()
         if not np.isnan(_ks_score):
             ks_score += _ks_score
         else:
             print('nan ks score due to transformed color channel being empty')
-    return ks_score / len(labels)
+            N -= 1
+    return ks_score / N
 
 def optimze_func(weights, env):
-    return 1 - env.evaluate(weights)
+    score = env.evaluate(weights)
+    print(score)
+    return 1 - score
 
 if __name__ == "__main__":
     import sys
