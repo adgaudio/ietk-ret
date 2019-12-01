@@ -1,3 +1,4 @@
+import argparse as ap
 import scipy.ndimage as ndi
 import evaluation as EV
 import dehaze
@@ -11,10 +12,6 @@ import numpy as np
 import scipy.optimize
 
 from eval_separability import ks_scores_from_hist
-
-NUM_IMG_SAMPLE = 30  # number of training sample loaded from IDRiD dataset, should be <= 54
-NUM_ITER = 15  # number of training iteration for cmaes
-NUM_WEIGHT_SAMPLE = 20  # number of samples generated at each cma iteration
 
 
 class CMAES:
@@ -43,7 +40,9 @@ class CMAES:
         Return:
         np array with size = self.d
         """
-        return np.random.multivariate_normal(self.mu, self.S)
+        rv = np.random.multivariate_normal(self.mu, self.S).reshape(3,3)
+        rv /= rv.sum(0, keepdims=True)
+        return rv.ravel()
 
     def train(self):
         """
@@ -77,6 +76,7 @@ class CMAES:
 
             # log
             print("At iteration {}, average score: {}".format(t + 1, np.mean(score_list)))
+            print('weights', self.mu)
 
     def get_result(self):
         """
@@ -150,33 +150,41 @@ def get_score_per_img(img, labels, focus_region):
         d = diseased_pixels = a[b&c]
         H = np.histogramdd(h, bins=256, range=[(0,1)]*3)[0]
         D = np.histogramdd(d, bins=256, range=[(0,1)]*3)[0]
-        _ks_score = np.abs(
-            (H/H.sum()).ravel().cumsum() - (D/D.sum()).ravel().cumsum()).max()
-        if not np.isnan(_ks_score):
-            ks_score += _ks_score
-        else:
-            print('nan ks score due to transformed color channel being empty')
+        if H.sum() == 0 or D.sum() == 0:
+            #  print('transformed color channel has no healthy or diseased
+            #  values in expected range')
             N -= 1
-    return ks_score / N
+        else:
+            ks_score += np.abs(
+                (H/H.sum()).ravel().cumsum() - (D/D.sum()).ravel().cumsum()).max()
+    if N == 0:
+        #  print('warn: transform matrix pushing pixels outside range')
+        return 0
+    else:
+        return ks_score / N
 
 def optimze_func(weights, env):
     score = env.evaluate(weights)
-    print(score)
+    print('score', score)
     return 1 - score
 
+def bap():
+    p = ap.ArgumentParser()
+    p.add_argument('--num-training-imgs', default=30, type=int, help='number of training sample loaded from IDRiD dataset, should be <= 54')
+    p.add_argument('--cmaes-num-iter', default=30, type=int, help='number of training iteration for cmaes')
+    p.add_argument('--cmaes-num-weight-sample', default=20, type=int, help='number of samples generated at each cma iteration')
+    p.add_argument('--num-workers', default=multiprocessing.cpu_count(), help='parallelization num processes')
+    p.add_argument('--no-use-cmaes', action='store_false', dest='using_cmaes')
+    return p
+
 if __name__ == "__main__":
-    import sys
-    try:
-        num_cores = int(sys.argv[1])
-    except:
-        num_cores = multiprocessing.cpu_count()
+    NS = bap().parse_args()
+    print(NS)
+    env = Environment(NS.num_workers, NS.num_training_imgs)
 
-    env = Environment(num_cores, NUM_IMG_SAMPLE)
-    usingCMA = False
-
-    if usingCMA:
+    if NS.using_cmaes:
         # use cmaes
-        cma = CMAES(env, NUM_WEIGHT_SAMPLE, 0.5, 10, NUM_ITER)
+        cma = CMAES(env, NS.cmaes_num_weight_sample, 0.5, 0.1, NS.cmaes_num_iter)
         cma.train()
         transform_matrix = cma.get_result().reshape(3, 3)
     else:
