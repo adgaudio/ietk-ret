@@ -40,13 +40,26 @@ def save_img(fp):
         d = dat['diseased'][ch, :]
         plt.plot(np.arange(256), h/h.sum(), '.', c=color[ch], alpha=.7, label=f'healthy -- {color[ch]}')
         plt.plot(np.arange(256), d/d.sum(), '.', c=color[ch], alpha=.3, label=f'diseased  -- {color[ch]}')
-        plt.title(f'Histogram of Pixel intensities, {key}')
-        plt.legend()
+        plt.title(f'Histogram of Pixel intensities,\n{key}')
+        plt.legend(loc='upper center')
         # #   fig.savefig(join(ns.save_dir, f'{name}-{lesion[lesion_id]}.png'))
         fig.savefig(join(ns.save_dir, f'{key}.png'))
 
 
 if __name__ == "__main__":
+    #  STYLE FOR A POSTER presentation
+    #  SMALL_SIZE = 45
+    #  MEDIUM_SIZE = 55
+    #  BIGGER_SIZE = 65
+    #  plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+    #  plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+    #  plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+    #  plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+    #  plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+    #  plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+    #  plt.rc('figure', titlesize=BIGGER_SIZE, figsize=(20,20))  # fontsize of the figure title
+    #  plt.rc('lines', linewidth=10, markersize=25)
+
     ns = bap().parse_args()
 
     fps = glob.glob(join(f'{ns.data_dir}', '*.npz'))
