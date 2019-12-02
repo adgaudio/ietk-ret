@@ -55,7 +55,7 @@ def bayes_sharpen(img, focus_region, label_name, **junk):
 
 def msrcr_retinex(img, focus_region, **junk):
     img = np.ma.masked_array(img*255, ~focus_region)
-    im_out = msrcr.MSRCR(img, 60, 3)
+    im_out = np.array(msrcr.MSRCR(img, 60, 3))/255
     return im_out
 
 
@@ -67,9 +67,9 @@ all_methods = {
     'Illuminated-Dehazed (DCP)': illuminate_dehaze_dcp,
     'Sharpen, t=0.15': sharpen,
     'Illuminate Sharpen': illuminate_sharpen,
+    'MSRCR (Retinex)': msrcr_retinex,
     #  'Bayes Sharpen, t>=0.15': bayes_sharpen,
     'Contrast Stretching': contrast_stretching,
     'Histogram Eq.': hist_eq,
     'Adaptive Histogram Eq.': adaptive_hist_eq,
-    'MSRCR (Retinex)': msrcr_retinex,
 }
