@@ -1,0 +1,79 @@
+\documentclass[12pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amsthm,amssymb,amsfonts}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{hw}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{empheq}
+\usepackage{cancel}
+
+
+\DeclareMathSizes{12}{30}{16}{12}
+
+\begin{document}
+
+
+\title{}
+\author{}
+\maketitle
+
+\renewcommand{\t}{\mathbf{t}}
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\I}{\mathbf{I}}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\J}{\mathbf{J}}
+% \newcommand{\Z}{\mathbf{Z}}
+\newcommand{\D}{\mathbf{D}}
+
+
+\Large
+
+\noindent
+\textbf{Image Distortion Model}
+\begin{flalign*}
+  &\I = \J \circ \t + \A \circ (1-\t). &&\\
+  &I^c(\x) = J^c(\x) t(\x) + A^c(\x) (1-t(\x)). &&
+\end{flalign*}
+
+\noindent
+\textbf{Sharpening}
+\begin{flalign*}
+  &\A = \text{blur}(\I). \quad \text{\small(A is an image)}&&\\
+  &\t \in [0, 1]  \quad \text{\small(scalar or grayscale image)}&&\\
+  &\J = \frac{\I - \A \circ (1-\t)}{\t} &&\\
+  &\quad = \frac{1}{\t}\circ \I + \A\circ(1-\frac{1}{\t}).&&
+\end{flalign*}
+
+\noindent
+\textbf{Dark Channel Prior}
+\begin{flalign*}
+&\A = (r,g,b). \quad \text{\small(estimate atmospheric light)}&&\\
+&I^\text{dark}(\x) = \min_c \min_{\y\in\Omega_I(\x)} I^c(\y).&&\\
+&\hat \t = 1 - \I^\text{dark}. &&\\
+&\t = \text{guidedFilter}(\hat \t, \I).&&\\
+&\J(\x) = \frac{\I(\x) - \A}{\max(t(\x), \epsilon)} + \A.&&
+\notag\\
+&\implies \J = \text{DCP}(\I)&&
+\end{flalign*}
+
+
+\noindent
+\textbf{ Illumination Correction }
+\begin{flalign*}
+&\A = (1,1,1). \quad \text{\small(whitebalanced light source)}&&\\
+&I^\text{dark}_\text{inv}(\x) = \min_c \min_{\y\in\Omega_I(\x)} 1-I^c(\y).&&\\
+&\hat t_\text{inv}(\x) = 1 - I^\text{dark}_\text{inv}(\x).&&\\
+&\t_\text{inv} = \text{guidedFilter}(\hat \t_\text{inv}, \I).&&\\
+&\J(\x) = 1- \left[\frac{1-\I(\x) - \A}{\max(t(\x), \epsilon)} + \A\right].&&
+\notag\\
+&\implies \J = 1-\text{DCP}(1-\I)&&
+\end{flalign*}
+
+
+\end{document}
