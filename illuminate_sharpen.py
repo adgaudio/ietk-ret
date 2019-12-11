@@ -69,8 +69,8 @@ def illuminate_sharpen(
     #  A2 = sp.signal.fftconvolve(I/t1, kernel[:,:,np.newaxis], axes=(0,1))
     A2 = cv2.ximgproc.guidedFilter(
         #  radiance.astype('float32'),
-        (I/t1).astype('float32'),
-        (I/t1).astype('float32'),
+        (I).astype('float32'),
+        (I).astype('float32'),
         sh_blur_radius, sh_blur_guided_eps)
 
     t2 = reshape_t(sh_t, I.shape)
@@ -92,8 +92,8 @@ def illuminate_sharpen(
     Jc = Jb2/2 + I/2  # TODO: jb2/2
     Jc2 = util.norm01(Jc, bg)
     # geometric avg with image (better looking)
-    Jc = np.sqrt(Jb.clip(0, 100)*I)
-    Jc2 = util.norm01(Jc, bg).clip(0,1)
+    #  Jc = np.sqrt(Jb.clip(0, 100)*I)
+    #  Jc2 = util.norm01(Jc, bg).clip(0,1)
 
     best = competing_methods.sharpen(Jc2, focus_region=~bg)
     paper = competing_methods.illuminate_sharpen(I, focus_region=~bg)
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     best = illuminate_sharpen(img)
     illum = competing_methods.illuminate_dcp(I, focus_region=~bg)
     plt.figure(1) ; plt.imshow(sh(illum))
-    plt.figure(2) ; plt.imshow((Jb))
+    plt.figure(2) ; plt.imshow(sh(Jc2, .2))
     #  best = competing_methods.sharpen(Jc2, focus_region=~bg)
     import sys ; sys.exit()
     plt.figure() ; plt.imshow(img)
