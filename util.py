@@ -14,6 +14,10 @@ def get_background(img):
     padding lost from closing, then considering background only if all 3
     channels assumed pixel was background.
     """
+    # this probably works just as well.
+    #  return ~ndi.binary_opening(ndi.minimum_filter(
+    #      img.min(-1), 6) > 0, np.ones((5,5)))
+
     img = img/img.max()
     background = (img < 20/255)
     background = ndi.morphology.binary_closing(
