@@ -3,3 +3,4 @@ data/
 *.csv
 __pycache__
 .ropeproject
+paper/
