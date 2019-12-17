@@ -5,10 +5,10 @@ from os.path import join
 import os
 
 
-import competing_methods
-import metric
-from idrid import IDRiD
-import util
+from ietk import competing_methods
+from ietk import metric
+from ietk.data import IDRiD
+from ietk import util
 
 
 def sep_pixels(img, focus_region, mask):

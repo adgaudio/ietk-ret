@@ -9,8 +9,8 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 
 
-from eval_consistency import PATTERN, get_data
-from idrid import IDRiD
+from ietk.eval_consistency import PATTERN, get_data
+from ietk.data import IDRiD
 
 
 def ks_scores_from_hist(a, b):

@@ -1,4 +1,5 @@
 """
+TODO: in progress
 illumination with bayesian prior  - use the equation to increase brightness of
 healthy pixels and decrease disease pixels.  this is possible since the depth
 map can be thought of as probabilities.
@@ -10,9 +11,9 @@ import pickle
 import functools
 
 
-from sharpen_img import sharpen
-from idrid import IDRiD
-import util
+from ietk.methods.sharpen_img import sharpen
+from ietk.data import IDRiD
+from ietk import util
 
 
 def iter_imgs(labels):

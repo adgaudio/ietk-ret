@@ -5,7 +5,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 import glob
 import cv2
-from util import get_background
+
+from ietk.util import get_background
 
 
 def get_dark_channel(
@@ -126,7 +127,7 @@ def illuminate_dehaze(img):
 
 
 if __name__ == "__main__":
-    #  fp = 'data/tiananmen1.png'
+    #  fp = '../../data/tiananmen1.png'
     #  img = plt.imread(fp)
     #  dct = dehaze(img)
     #  img2 = dct['radiance']
@@ -136,8 +137,8 @@ if __name__ == "__main__":
     #  plt.imshow(np.clip(img2, 0, 1))
     #  import sys ; sys.exit()
 
-    fps_healthy = glob.glob('./data/messidor_grade1/*/*')
-    fps_grade3 = glob.glob('./data/messidor_grade3/*/*')
+    fps_healthy = glob.glob('../../data/messidor_grade1/*/*')
+    fps_grade3 = glob.glob('../../data/messidor_grade3/*/*')
 
     #  for fp in fps_healthy[:10]:
         #  illuminate_from_fp(fp)
@@ -146,8 +147,8 @@ if __name__ == "__main__":
 
     # testing: check that the methods work
     fp = fps_grade3[0]
-    #  #  fp = './data/tiananmen1.png'
-    #  #  fp = './data/forest.jpg'
+    #  #  fp = '../../data/tiananmen1.png'
+    #  #  fp = '../../data/forest.jpg'
     img = plt.imread(fp)
     d, d2 = illuminate_from_fp(fp)
     f, axs = plt.subplots(1, 3)

@@ -1,13 +1,18 @@
+"""
+Some plots of dehazing and color illumination
+"""
 import random
-from dehaze import *
+import multiprocessing as mp
+from mpl_toolkits.axes_grid1.axes_grid import ImageGrid
+from ietk.methods.dehaze import *
 
 if __name__ == "__main__":
     fps_healthy = glob.glob('./data/messidor_healthy/*/*')
     fps_grade3 = glob.glob('./data/messidor_grade3/*/*')
 
-    test1 = False
+    test1 = True
     test2 = False
-    test3 = True
+    test3 = False
 
     if test1:
         # Test 1.  compare illumination correction vs dehaze->illuminate
@@ -66,7 +71,6 @@ if __name__ == "__main__":
         #  ImageGrid
         grid_shape = (3, 4)
         #  imgs = [U.tonp(U.read_img(fp)) for fp in fps_healthy[:grid_shape[0]]]
-        import random
         fps_shuffled = [x for x in fps_grade3]
         random.shuffle(fps_shuffled)
         #  imgs = [U.tonp(U.read_img(fp)) for fp in fps_shuffled]
@@ -95,7 +99,6 @@ if __name__ == "__main__":
             return img#(img -img.min())/ (img.max()-img.min())
         #  ImageGrid
         #  imgs = [U.tonp(U.read_img(fp)) for fp in fps_healthy[:grid_shape[0]]]
-        import random
         fps_shuffled = [x for x in fps_grade3]
         random.shuffle(fps_shuffled)
         #  imgs = [U.tonp(U.read_img(fp)) for fp in fps_shuffled]

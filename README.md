@@ -1,3 +1,12 @@
+# IETK - Image Enhancement Toolkit
+
+A theory for image distortion due to scattering of light can be used to
+create a variety of image enhancement methods.
+
+This repo accompanies a paper on Image Enhancement
+
+TODO: readme below here.
+
 # Illumination Correction
 
 This code implements an illumination correction filter by making use of

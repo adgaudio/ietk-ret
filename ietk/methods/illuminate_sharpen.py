@@ -1,9 +1,12 @@
+"""
+TODO: In Progress
+"""
 import numpy as np
 import cv2
 import scipy as sp
 from dehaze import get_dark_channel
-import competing_methods
-import util
+from ietk.methods import competing_methods
+from ietk import util
 
 
 def reshape_A(A, I_shape):
@@ -133,6 +136,10 @@ def illuminate_sharpen(
 
 if __name__ == "__main__":
     from matplotlib import pyplot as plt
+
+    from ietk.data import IDRiD
+    from ietk import util
+
     #  I =  np.dstack([(np.outer(*[np.exp(-np.linspace(0, 1, 1000))]*2))]*3)
     #  bg = np.zeros_like(I, dtype='bool')
     #  z = illuminate_sharpen(I)
@@ -147,8 +154,6 @@ if __name__ == "__main__":
         #  kernel = np.outer(*([sp.stats.norm.pdf(np.linspace(-1, 1, sh_blur_radius), 0, .7)]*2))
         #  A2 = sp.signal.fftconvolve(I/t1, reshape_A(kernel))
         return (I-A2)/t + A2
-    from idrid import IDRiD
-    import util
     dset = IDRiD('./data/IDRiD_segmentation')
     img, labels = dset['IDRiD_25']
     #  he = labels['HE']

@@ -1,8 +1,9 @@
 import cv2.ximgproc
 import numpy as np
-import util
-from idrid import IDRiD
 from matplotlib import pyplot as plt
+
+from ietk.data import IDRiD
+from ietk import util
 
 
 def sharpen(img, bg, t=0.15, blur_radius=30, blur_guided_eps=1e-2):
