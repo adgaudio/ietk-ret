@@ -87,7 +87,7 @@ def illumination_correction(img, dark_channel_filter_size=25,
     radiance = 1 - (((1-img.astype('float')) - A)/np.expand_dims(t_refined, -1) + A)
     #  radiance = norm01(radiance)
     #  radiance = radiance / radiance.max()
-    radiance = radiance.clip(0, 1)
+    #  radiance = radiance.clip(0, 1)
     return locals()
 
 
