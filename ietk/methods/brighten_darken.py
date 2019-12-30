@@ -71,7 +71,7 @@ def darken_dark_areas_redgreen_v1(I):
     J = solveJ(I, 1, t)
     return J
 
-def darken_bright_areas_redgreen_v2(I):
+def darken_dark_areas_redgreen_v2(I):
     """ darken the DARK areas (ignoring blue channel, which is necessary for
     retinal fundus images)"""
     # normal dehazing.
@@ -186,16 +186,17 @@ if __name__ == "__main__":
     sh(I, 1)
     ## brighten dark areas
     z2 = brighten_dark_areas_v2(I)
-    #  sh(z2, 2)
+    sh(z2, 2)
     #  z3 = brighten_dark_areas_v1(I)
     #  sh(z3, 3)
     #  assert np.allclose(z2, z3)
+    import sys ; sys.exit()
 
     ## brighten bright areas
     z4 = brighten_bright_areas_v1(I)
     sh(z4, 4)
     #  z5 = brighten_bright_areas_v2(I)
-    #  #  sh(z5, 5)
+    #  sh(z5, 5)
     #  assert np.allclose(z4, z5)
 
     ## darken bright areas
@@ -204,11 +205,11 @@ if __name__ == "__main__":
     #  #  z7[:,:,2] = 0
 
     ## darken the DARK areas
-    z8 = darken_bright_areas_redgreen_v2(I)
+    z8 = darken_dark_areas_redgreen_v2(I)
     #  #  z8[:,:,2]
     sh(z8, 8)
-    #  z9 = darken_dark_areas_redgreen_v1(I)
-    #  sh(z9, 9)
+    z9 = darken_dark_areas_redgreen_v1(I)
+    sh(z9, 9)
     #  assert np.allclose(z8, z9)
 
     ## compose both brighten methods (b) and both darken methods (d)
