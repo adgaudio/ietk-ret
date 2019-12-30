@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+"""
+On IDRiD dataset,
+Generate histograms of pixel intensities for the red, green and blue channels
+after pre-processing methods are applied.
+Save histogram data and plots to file.
+"""
 import numpy as np
 from matplotlib import pyplot as plt
 from functools import lru_cache

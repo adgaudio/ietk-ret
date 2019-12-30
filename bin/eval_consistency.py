@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+"""
+On IDRiD dataset,
+evaluate consistency scores for each of the pre-processing methods that we've
+generated a histogram for.  Assumes histograms are saved to disk.
+Run this after gen_histograms.py.
+"""
 import numpy as np
 import pandas as pd
 import glob
