@@ -18,14 +18,15 @@ def sharpen(img, bg, t=0.15, blur_radius=30, blur_guided_eps=1e-8):
     t - the transmission map (inverse amount of sharpening)
         can be scalar, matrix of same (h, w) as img, or 3 channel image.
     """
+    if bg is not None:
+        img = img.copy()
+        img[bg] = 0
     # blurring (faster than ndi.gaussian_filter(I)
     A = cv2.ximgproc.guidedFilter(
         #  radiance.astype('float32'),
         img.astype('float32'),
         img.astype('float32'),
         blur_radius, blur_guided_eps)
-    if bg is not None:
-        A[bg] = 0
 
     #  t_refined = np.ones(img.shape[:2]) * t
 
