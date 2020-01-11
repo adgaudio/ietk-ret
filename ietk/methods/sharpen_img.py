@@ -6,7 +6,7 @@ from ietk.data import IDRiD
 from ietk import util
 
 
-def sharpen(img, bg, t=0.15, blur_radius=30, blur_guided_eps=1e-2):
+def sharpen(img, bg, t=0.15, blur_radius=30, blur_guided_eps=1e-8):
     """Use distortion model to deblur image.  Equivalent to usharp mask:
 
         1/t * img - (1-1/t) * blurry(img)
@@ -43,7 +43,7 @@ def sharpen(img, bg, t=0.15, blur_radius=30, blur_guided_eps=1e-2):
     r2 = cv2.ximgproc.guidedFilter(
         img.astype('float32'),
         J.astype('float32'),
-        2, 1e-2)
+        2, 1e-8)
     if bg is not None:
         r2[bg] = 0
     return r2

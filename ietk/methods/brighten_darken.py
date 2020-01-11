@@ -18,16 +18,16 @@ def solveJ(I, A, t):
 
 
 def solvet(I, A):
-    z = 1-ndi.minimum_filter((I/A).min(-1), (25, 25))
+    z = 1-ndi.minimum_filter((I/A).min(-1), (5, 5))
     return gf(I, z).reshape(*I.shape[:2], 1)
 
 
 def solvetmax(I, A):
-    z = 1-ndi.maximum_filter((I/A).max(-1), (25, 25))
+    z = 1-ndi.maximum_filter((I/A).max(-1), (5, 5))
     return gf(I, z).reshape(*I.shape[:2], 1)
 
 
-def gf(guide, src, r=80, eps=1e-2):
+def gf(guide, src, r=100, eps=1e-8):
     return guidedFilter(guide.astype('float32'), src.astype('float32'), r, eps).astype('float64')
 
 
@@ -147,20 +147,20 @@ def compose_db(I):
 
 def compose_bd_simpler(I):
     """ darken the bright areas and then brighten the dark areas"""
-    t1 = solvet(1-I, 1)
+    t1 = solvet(1-I, 1)  #a
     A1 = 0
     I2 = I[:,:,:2]
-    t2 = solvet(I2, 1)
+    t2 = solvet(I2, 1)  #d
     A2 = 1
     return solveJ(solveJ(I, A1, t1), A2,t2)
 
 
 def compose_db_simpler(I):
     """ brighten the dark areas and then darken the bright areas"""
-    t1 = solvet(1-I, 1)
+    t1 = solvet(1-I, 1)  #a
     A1 = 0
     I2 = I[:,:,:2]
-    t2 = solvet(I2, 1)
+    t2 = solvet(I2, 1)  #d
     A2 = 1
     return solveJ(solveJ(I, A2, t2), A1,t1)
 
@@ -225,22 +225,30 @@ if __name__ == "__main__":
 
     ##  compose brighten dark areas and darken bright areas
     bd = compose_bd_simpler(I)
+    #  bd = compose_bd(I)
     db = compose_db_simpler(I)
+    #  db = compose_db(I)
     avged = bd/2 + db/2
+    avged[bg] = 0
     #  avged2 = np.sqrt(bd*db)
     #  sh(bd, 30)
     #  sh(db, 31)
     #  sh(np.sqrt(bd*db), 32)
-    sh((bd+db)/2)
+    sh(avged, 10)
+    plt.figure() ; plt.imshow(avged)
+    #  import sys ; sys.exit()
 
     ## evaluate
-    #  print('ill')
+    print('ill')
     #  ill = methods.illuminate_dcp(I, focus_region=util.get_foreground(I))
     #  illsh = methods.illuminate_sharpen(I, focus_region=util.get_foreground(I))
-    #  composedsharp = methods.sharpen(avged, focus_region=util.get_foreground(I))
-    #  print('metric')
-    #  for labelname, Imask in labels.items():
-    #      print(labelname)
+    #  sh(illsh, 12)
+    composedsharp = methods.sharpen(avged, focus_region=util.get_foreground(I))
+    sh(composedsharp, 11)
+    print('metric')
+    for labelname, Imask in labels.items():
+        print(labelname)
     #      for z in [I, bd, db, avged, ill, illsh, composedsharp]:
-    #      #  for z in [I, illsh, composedsharp, illsh.clip(0,1), composedsharp.clip(0,1)]:
-    #          print(metric.ks_test_max_per_channel(z, Imask, np.ones_like(I, dtype='bool')))
+        for z in [I, illsh, composedsharp]:
+        #  for z in [composedsharp]:
+            print(metric.ks_test_max_per_channel(z, Imask, np.ones_like(I, dtype='bool')))

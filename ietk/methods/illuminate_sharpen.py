@@ -32,8 +32,8 @@ def reshape_t(t, I_shape):
 
 
 def illuminate_sharpen(
-    I, ill_dark_channel_filter_size=25, ill_guided_filter_radius=80,
-    ill_guided_eps=1e-2, ill_A=1, sh_t=0.20, sh_blur_radius=75, sh_blur_guided_eps=1e-2):
+    I, ill_dark_channel_filter_size=50, ill_guided_filter_radius=100,
+    ill_guided_eps=1e-8, ill_A=1, sh_t=0.20, sh_blur_radius=75, sh_blur_guided_eps=1e-8):
     """
     Simultaneously Illuminate and Sharpen an image.
     Not equivalent to sharpen(illuminate(img)), since computes J in one pass
