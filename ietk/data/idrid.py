@@ -115,6 +115,10 @@ class IDRiD:
             rv.extend(self.load_img(img_id, labels))
             yield tuple(rv)
 
+    def sample(self, labels=None):
+        img_id = random.choice(list(self.fps['imgs']))
+        return (img_id, ) + self.load_img(img_id, labels=labels)
+
     def __iter__(self):
         yield from self.iter_imgs()
 

@@ -6,7 +6,8 @@ from ietk.data import IDRiD
 from ietk import util
 
 
-def sharpen(img, bg, t=0.15, blur_radius=30, blur_guided_eps=1e-8):
+def sharpen(img, bg, t=0.15, blur_radius=30, blur_guided_eps=1e-8,
+            use_guidedfilter=True):
     """Use distortion model to deblur image.  Equivalent to usharp mask:
 
         1/t * img - (1-1/t) * blurry(img)
@@ -41,6 +42,9 @@ def sharpen(img, bg, t=0.15, blur_radius=30, blur_guided_eps=1e-8):
     if bg is not None:
         J[bg] = 0
 
+    if not use_guidedfilter:
+        return J
+
     r2 = cv2.ximgproc.guidedFilter(
         img.astype('float32'),
         J.astype('float32'),
@@ -52,7 +56,9 @@ def sharpen(img, bg, t=0.15, blur_radius=30, blur_guided_eps=1e-8):
 
 if __name__ == "__main__":
     dset = IDRiD('./data/IDRiD_segmentation')
-    img, labels = dset['IDRiD_24']
+    #  img, labels = dset['IDRiD_24']
+    img_id, img, labels = dset.sample()
+    print(img_id)
     #  he = labels['HE']
     #  ma = labels['MA']
     #  ex = labels['EX']
@@ -62,18 +68,21 @@ if __name__ == "__main__":
     bg = util.get_background(img)
     img[bg] = 0
 
-
     J = sharpen(img, bg)
-    #  r2 = cv2.ximgproc.guidedFilter(
-        #  img.astype('float32'),
-        #  J.astype('float32'),
-        #  2, 1e-2)
-    #  r2[bg] = 0
+    J_nogf = sharpen(img, bg, use_guidedfilter=False)
 
+    f, axs = plt.subplots(1, 2, figsize=(15, 5))
+    #  f, axs = plt.subplots(1, 3, figsize=(15, 5))
+    axs[0].imshow(img)
+    axs[0].set_title('Unmodified image')
+    axs[1].imshow(J)
+    axs[1].set_title('Sharpened')
 
-    plt.figure(num=1) ; plt.imshow(img)
-    plt.figure(num=2) ; plt.imshow(util.norm01(J, None))
-    plt.figure(num=3) ; plt.imshow(J.clip(0, 1))
+    #  axs[2].imshow(J_nogf)
+    #  axs[2].set_title('Sharpened without guided filter')
+    [ax.axis('off') for ax in axs]
+    f.savefig('./paper/figures/sharpen_fundus.png', bbox_inches='tight')
+    plt.show()
     #  plt.figure(num=4) ; plt.imshow(util.norm01(r2, bg))
     #  plt.figure(num=5) ; plt.imshow(r2.clip(0, 1))
 
