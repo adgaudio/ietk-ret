@@ -15,7 +15,7 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
 
     Then, apply guided filter to smooth result but preserve edges.
 
-    img - image to sharpen.
+    img - image to sharpen, assume normalized in [0,1]
     bg - image background
     t - the transmission map (inverse amount of sharpening)
         can be scalar, matrix of same (h, w) as img, or 3 channel image.
@@ -23,7 +23,7 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
         image with 10x10 kernel. For enhancing fine details in large images.
     """
     if bg is None:
-        bg = np.zeros_like(img, dtype='bool')
+        bg = np.zeros(img.shape[:2], dtype='bool')
     else:
         img = img.copy()
         img[bg] = 0
@@ -39,8 +39,8 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
     #  assert np.isnan(A).sum() == 0
 
     if t == 'laplace':
-        t = 1-util.norm01(sharpen(
-            ndi.gaussian_laplace(img, (10,10,1)), bg, 0.15), bg)
+        t = 1-util.norm01(sharpen(ndi.morphological_laplace(
+            img, (2,2,1), mode='wrap'), bg, 0.15), bg)
 
     if len(np.shape(t)) + 1 == len(img.shape):
         t_refined = np.expand_dims(t, -1).astype('float')
@@ -69,9 +69,9 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
 
 if __name__ == "__main__":
     dset = IDRiD('./data/IDRiD_segmentation')
-    #  img, labels = dset['IDRiD_24']
-    img_id, img, labels = dset.sample()
-    print(img_id)
+    img, labels = dset['IDRiD_26']
+    #  img_id, img, labels = dset.sample()
+    #  print(img_id)
     #  he = labels['HE']
     #  ma = labels['MA']
     #  ex = labels['EX']

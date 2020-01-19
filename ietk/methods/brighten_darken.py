@@ -16,6 +16,12 @@ def solvet(I, A, use_gf=True, fsize=(5,5)):
     rv = z.reshape(*I.shape[:2], 1)
     return rv
 
+#  def solvet_perchannel(I, A, use_gf=True, fsize=(5,5,0)):
+#      z = 1-ndi.minimum_filter((I/A), fsize)
+#      if use_gf:
+#          z = gf(I, z)
+#      return z
+
 def solvetmax(I, A):
     z = 1-ndi.maximum_filter((I/A).max(-1), (5, 5))
     return gf(I, z).reshape(*I.shape[:2], 1)
@@ -28,6 +34,12 @@ def gf(guide, src, r=100, eps=1e-8):
     return guidedFilter(guide.astype('float32'), src.astype('float32'), r, eps).astype('float64')
 
 
+def resizeforplot(img):
+    import PIL
+    size = (np.array(img.shape)/2).astype('int')
+    return np.asarray(PIL.Image.fromarray((img.clip(0, 1)*255).astype('uint8')).resize(
+        (size[1], size[0])))
+
 if __name__ == "__main__":
     from ietk import methods
     from ietk import metric
@@ -35,7 +47,7 @@ if __name__ == "__main__":
     dset = IDRiD('./data/IDRiD_segmentation')
     img_id, img, labels = dset.sample()
     print("using image", img_id)
-    #  img, labels = dset['IDRiD_03']
+    #  img, labels = dset['IDRiD_46']
     #  he = labels['HE']
     #  ma = labels['MA']
     #  ex = labels['EX']
@@ -47,19 +59,18 @@ if __name__ == "__main__":
     #  I = img[1500:2500, 1500:2500, :]
     #  labels = {k: v[1500:2500, 1500:2500] for k, v in labels.items()}
 
-    #  I[:,:,2] = I[:,:,(0,1)].mean(-1) # ignore the third channel.
-    I[:,:,2] = I[:,:,1]  # ignore the third channel.
-
     #  bg = np.zeros_like(I, dtype='bool')
     bg = util.get_background(I)
     I[bg] = 0
-    #  Imask = labels['MA'][1500:3000, 1500:3000]
 
     # four transmission maps
     a = solvet(1-I, 1)  # == 1-solvetmax(I, 1)
     d = 1-solvet(1-I, 1)  # == solvetmax(I, 1)
-    c = 1-solvet(I, 1)  # == solvetmax(1-I, 1)
-    b = solvet(I, 1)  # == 1-solvetmax(1-I, 1)
+    I2 = I.copy()
+    I2[:,:,2] = 1  # the min values of blue channel is too noise
+    c = 1-solvet(I2, 1)  # == solvetmax(1-I, 1)
+    b = solvet(I2, 1)  # == 1-solvetmax(1-I, 1)
+
     #  a = solvet(1-I, 1, False, (50,20))  # == 1-solvetmax(I, 1)
     #  d = 1-solvet(1-I, 1, False, (50,20))  # == solvetmax(I, 1)
     #  c = 1-solvet(I, 1, False, (50,20))  # == solvetmax(1-I, 1)
@@ -72,10 +83,6 @@ if __name__ == "__main__":
 
     # Plots
     print('plotting')
-    def resizeforplot(img):
-        size = (np.array(img.shape)/2).astype('int')
-        return np.asarray(PIL.Image.fromarray((img.clip(0, 1)*255).astype('uint8')).resize(
-            (size[1], size[0])))
 
     kws = dict(bt='\mathbf{t}', bI='\mathbf{I}', bA='\mathbf{A}')
     t_eqs = [
