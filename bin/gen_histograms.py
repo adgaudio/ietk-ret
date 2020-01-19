@@ -12,7 +12,7 @@ from os.path import join
 import os
 
 
-from ietk import competing_methods
+from ietk import methods
 from ietk import metric
 from ietk.data import IDRiD
 from ietk import util
@@ -29,7 +29,7 @@ def sep_pixels(img, focus_region, mask):
 def iter_imgs(dset, ns):
     for img_id, img, labels in dset.iter_imgs(labels=ns.labels, subset=ns.img_ids):
         focus_region = util.get_foreground(img)
-        for method_name, func in competing_methods.all_methods.items():
+        for method_name, func in methods.all_methods.items():
             if method_name not in ns.methods:
                 continue
             modified_img = None
@@ -107,10 +107,10 @@ def bap():
     p = ap.ArgumentParser()
     p.add_argument('--img-ids', nargs='*', help='By default, analyze all imgs.  If this parameter is given, only analyze given imgs:  --img-ids IDRiD_01 IMDiD_02')
     p.add_argument('--labels', nargs='*', default=('MA', 'HE', 'EX', 'SE', 'OD'), help='Lesions to analyze', choices=('MA', 'HE', 'EX', 'SE', 'OD'))
-    p.add_argument('--methods', nargs='*', default=tuple(competing_methods.all_methods.keys()), choices=tuple(competing_methods.all_methods.keys()), help='list of methods named in competing_methods.all_methods')
+    p.add_argument('--methods', nargs='*', default=tuple(methods.all_methods.keys()), choices=tuple(methods.all_methods.keys()), help='list of methods named in methods.all_methods')
     p.add_argument('--data-dir', default='./data/IDRiD_segmentation', help='Location of the IDRiD dataset')
-    p.add_argument('--save-dir', default='./data/histograms_idrid', help='Location of the IDRiD dataset')
-    p.add_argument('--save-dir-data', default='./data/histograms_idrid_data', help='Location of the IDRiD dataset')
+    p.add_argument('--save-dir', default='./data/histograms_idrid_plots', help='Directory to save generated histograms')
+    p.add_argument('--save-dir-data', default='./data/histograms_idrid_data', help='Directory to save generated plots')
     p.add_argument('--show-plot', action='store_true', help='by default, dont show plot.  just save a figure to disk')
     return p
 

@@ -27,7 +27,7 @@ def get_data(fp):
 
 
 def main():
-    save_img_dir='./data/histograms_idrid_plots'
+    save_img_dir='./data/histograms_idrid_plots/separability_consistency'
     os.makedirs(save_img_dir, exist_ok=True)
     fps = glob.glob('./data/histograms_idrid_data/IDRiD*.npz')
     metadatas = [PATTERN.search(fp).groupdict() for fp in fps]

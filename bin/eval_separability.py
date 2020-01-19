@@ -41,7 +41,7 @@ def get_separability_scores(fps):
 
 
 if __name__ == "__main__":
-    save_img_dir='./data/histograms_idrid_plots/'
+    save_img_dir='./data/histograms_idrid_plots/separability_consistency'
     os.makedirs(save_img_dir, exist_ok=True)
     fps = glob.glob('./data/histograms_idrid_data/IDRiD*.npz')
 
