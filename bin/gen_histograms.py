@@ -59,8 +59,8 @@ def gen_histogram(img_id, method_name, lesion_name, healthy, diseased, **junk):
     fig, axs = plt.subplots(3, 1, num=1)
 
     for ax, ch in zip(axs.ravel(), [0,1,2]):
-        ax.hist(healthy[:, ch]*255, bins=256, range=(0,256), density=True, label='healthy', alpha=.3, color=color[ch], lw=0)
-        ax.hist(diseased[:, ch]*255, bins=256, range=(0,256), density=True, label='diseased', alpha=.7, color=color[ch], lw=0)
+        ax.hist(healthy[:, ch].clip(0,1)*255, bins=256, range=(0,256), density=True, label='healthy', alpha=.3, color=color[ch], lw=0)
+        ax.hist(diseased[:, ch].clip(0,1)*255, bins=256, range=(0,256), density=True, label='diseased', alpha=.7, color=color[ch], lw=0)
         ax.legend()
         ax.set_title(f'channel: {color[ch]}')
     fig.suptitle(f'{img_id} {lesion_name} {method_name}')
@@ -90,16 +90,16 @@ def main(ns):
         else:
             hs, ds = [], []
             for ch in [0,1,2]:
-                h, _ = np.histogram(healthy[:, ch]*255, bins=256, range=(0,256))
-                d, _ = np.histogram(diseased[:, ch]*255, bins=256, range=(0,256))
+                h, _ = np.histogram(healthy[:, ch].clip(0,1)*255, bins=256, range=(0,256))
+                d, _ = np.histogram(diseased[:, ch].clip(0,1)*255, bins=256, range=(0,256))
                 hs.append(h)
                 ds.append(d)
             np.savez_compressed(data_fp, healthy=np.stack(hs), diseased=np.stack(ds))
         if os.path.exists(data_3d_fp):
             print(f'3d histogram data file exists, not re-creating: {data_3d_fp}')
         else:
-            H = np.histogramdd(healthy, bins=256, range=[(0,256)]*3)[0]
-            D = np.histogramdd(diseased, bins=256, range=[(0,256)]*3)[0]
+            H = np.histogramdd(healthy.clip(0,1), bins=256, range=[(0,256)]*3)[0]
+            D = np.histogramdd(diseased.clip(0,1), bins=256, range=[(0,256)]*3)[0]
             np.savez_compressed(data_3d_fp, healthy=H, diseased=D)
 
 
