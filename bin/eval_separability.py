@@ -15,9 +15,8 @@ import os
 from matplotlib import pyplot as plt
 import seaborn as sns
 
-
-from ietk.eval_consistency import PATTERN, get_data
 from ietk.data import IDRiD
+from eval_consistency import PATTERN, get_data
 
 
 def ks_scores_from_hist(a, b):
@@ -46,6 +45,7 @@ if __name__ == "__main__":
     fps = glob.glob('./data/histograms_idrid_data/IDRiD*.npz')
 
     df = get_separability_scores(fps)
+    df['method_name'] = df['method_name'].apply(lambda x: 'avg:%s' % x if '+' in x else x)
 
     print('separability plots')
     # KS score, per channel
@@ -53,13 +53,13 @@ if __name__ == "__main__":
         .melt(['img_id', 'Lesion', 'Method'], ['red', 'green', 'blue'], 'Color Channel', 'Separability score (KS test)')\
         .sort_values(['Lesion', 'Method'])
     fig = sns.catplot(
-        x='Lesion', y='Separability score (KS test)', hue='Method', col='Color Channel', data=df2, kind='bar'
+        x='Lesion', y='Separability score (KS test)', hue='Method', col='Color Channel', data=df2, kind='bar', palette='tab20c',
     ).savefig(join(save_img_dir, 'separability_per_channel.png'))
     # KS score, max across channels
     fig = sns.catplot(
         x='Lesion', y='Separability score (KS test)', hue='Method',
         data=df2.loc[df2.groupby(['img_id', 'Lesion', 'Method'])['Separability score (KS test)'].idxmax()],
-        kind='bar'
+        kind='bar', palette='tab20c',
     ).savefig(join(save_img_dir, 'separability_max_of_channels.png'))
     #  ).set_titles(['Separability: KS score, max of color channels'])\
 
