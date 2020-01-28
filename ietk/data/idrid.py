@@ -3,7 +3,9 @@ class to load IDRiD dataset
 """
 import random
 import glob
+import numpy as np
 from os.path import basename
+import PIL
 import re
 from matplotlib import pyplot as plt
 
@@ -68,7 +70,9 @@ class IDRiD:
             labels - dict of form {label: label_mask} where label_mask is a
                 boolean array with same height and width as image.
         """
-        img = plt.imread(self.fps['imgs'][img_id]) / 255
+        with PIL.Image.open(self.fps['imgs'][img_id]) as img:
+            img.load()
+            img = np.array(img) / 255
         if labels is None:
                 labels = {'HE', 'MA', 'EX', 'SE', 'OD'}
 
