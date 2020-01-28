@@ -86,6 +86,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     import util
     im_in = plt.imread(args.input).copy().astype('float32')
-    im_in = np.ma.masked_array(im_in, (util.get_background(im_in)))
+    im_in = np.ma.masked_array(im_in, (util.get_background(im_in/255)))
     im_out = MSRCR(im_in, args.s, args.n, args.d, not args.no_cr)
     cv2.imwrite(args.output, im_out[:, :, (2, 1, 0)])

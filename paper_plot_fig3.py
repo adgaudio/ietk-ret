@@ -25,7 +25,7 @@ def solveJ(I, A, t):
     return (I-A)/t + A
 
 
-def gf(guide, src, r=100, eps=1e-2):
+def gf(guide, src, r=100, eps=1e-8):
     return guidedFilter(guide.astype('float32'), src.astype('float32'), r, eps).astype('float64')
 
 
@@ -40,7 +40,7 @@ def add_ks(I, bg, L, ax):
 
 
 dset = IDRiD('./data/IDRiD_segmentation')
-img, labels = dset['IDRiD_30']
+img, labels = dset['IDRiD_02']
 bg = util.get_background(img)
 
 I = img#[800:1900, 1700:3800, :]
@@ -157,13 +157,15 @@ for num, (title, imgs) in enumerate([
 
 # A+X / 2 is the best one for MA.  A and X are the best for MA
 # vasculature
-#  z = guidedFilter(I.astype('float32'), (C).astype('float32'), 2, 1e-2)
-#  y = sharpen(z, bg)
+z = guidedFilter(I.astype('float32'), (C).astype('float32'), 2, 1e-8)
+y = sharpen(z, bg)
 # choroidal vasculature.
 #  x = guidedFilter(I.astype('float32'), (Z).astype('float32'), 2, 1e-2)
 #  w = sharpen(x, bg, t=0.15)
 #  plt.imshow(w)
 
+# hard exudate segmentation
+#  plt.figure() ; plt.imshow((sharpen(Z, bg)>0).all(-1)*255) ; plt.show(block=False)
 
 plt.show(block=False)
 #  what should I do... I now have a method that
@@ -172,3 +174,4 @@ plt.show(block=False)
 
 #  segment lesions, vasculature, choroidal vessels
 #  Q: does sharpen change best performer?
+

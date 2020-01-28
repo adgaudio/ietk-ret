@@ -101,7 +101,7 @@ class Environment:
 
         for i in range(num_samples):
             _, img, labels = next(dset_iter)
-            fg = util.get_foreground(img)[:,:,0]
+            fg = util.get_foreground(img)
 
             self.images.append(img)
             self.labels.append(labels)

@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 import scipy as sp
 from dehaze import get_dark_channel
-from ietk.methods import competing_methods
+from ietk import methods
 from ietk import util
 
 
@@ -98,8 +98,8 @@ def illuminate_sharpen(
     #  Jc = np.sqrt(Jb.clip(0, 100)*I)
     #  Jc2 = util.norm01(Jc, bg).clip(0,1)
 
-    best = competing_methods.sharpen(Jc2, focus_region=~bg)
-    paper = competing_methods.illuminate_sharpen(I, focus_region=~bg)
+    best = methods.sharpen(Jc2, focus_region=~bg)
+    paper = methods.illuminate_sharpen(I, focus_region=~bg)
     globals().update(locals())
     return best
     # sigmoid average
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     img[bg] = 0
 
     best = illuminate_sharpen(img)
-    illum = competing_methods.illuminate_dcp(I, focus_region=~bg)
+    illum = methods.illuminate_dcp(I, focus_region=~bg)
     plt.figure(1) ; plt.imshow(sh(illum))
     plt.figure(2) ; plt.imshow(sh(Jc2, .2))
     #  best = competing_methods.sharpen(Jc2, focus_region=~bg)
@@ -191,11 +191,10 @@ if __name__ == "__main__":
     axs[0].imshow(img)
     axs[1].imshow(util.norm01(Jb, bg).clip(0,1))
     axs[2].imshow(Jc/Jc.max())
-    import competing_methods
-    axs[3].imshow(competing_methods.illuminate_sharpen(img, focus_region=~bg))
-    JS = competing_methods.sharpen(Jc/Jc.max(), focus_region=~bg)
+    axs[3].imshow(methods.illuminate_sharpen(img, focus_region=~bg))
+    JS = methods.sharpen(Jc/Jc.max(), focus_region=~bg)
     axs[4].imshow(JS)
-    axs[5].imshow(util.norm01(competing_methods.illuminate_dcp(img, focus_region=~bg), bg))
+    axs[5].imshow(util.norm01(methods.illuminate_dcp(img, focus_region=~bg), bg))
     f.savefig('data/test_illuminate_sharpen_atonce.png')
 
 
