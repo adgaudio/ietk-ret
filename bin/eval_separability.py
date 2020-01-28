@@ -45,7 +45,7 @@ if __name__ == "__main__":
     fps = glob.glob('./data/histograms_idrid_data/IDRiD*.npz')
 
     df = get_separability_scores(fps)
-    df['method_name'] = df['method_name'].apply(lambda x: 'avg:%s' % x if '+' in x else x)
+    df['method_name'] = df['method_name'].apply(lambda x: 'avg%s:%s' % (x.count('+'), x) if '+' in x else x)
 
     print('separability plots')
     # KS score, per channel
