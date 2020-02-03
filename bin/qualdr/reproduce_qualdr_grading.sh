@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# a script (run on the local computer) to reproduce our experiments.
+# a script (run on the local computer) to reproduce experiments.
 
 set -e
 set -u
