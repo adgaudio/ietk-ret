@@ -4,3 +4,5 @@ data/
 __pycache__
 .ropeproject
 paper/
+old/
+*.egg-info/
