@@ -41,6 +41,8 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
     if t == 'laplace':
         t = 1-util.norm01(sharpen(ndi.morphological_laplace(
             img, (2,2,1), mode='wrap'), bg, 0.15), bg)
+        #  t = 1-util.norm01(ndi.morphological_laplace(
+            #  img, (2,2,1), mode='wrap'), bg)
 
     if len(np.shape(t)) + 1 == len(img.shape):
         t_refined = np.expand_dims(t, -1).astype('float')
