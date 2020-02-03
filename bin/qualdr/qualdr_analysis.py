@@ -9,7 +9,7 @@ import pandas as pd
 import re
 import seaborn as sns
 
-from plot_perf import _mode1_get_frames, bap
+from screendr.plot_perf import _mode1_get_frames, bap
 
 
 def parse_run_id(run_id):
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     ##
     ### Correlation to separability score -- cross dataset comparison
     ##
-    _sep = pd.read_csv('/home/alex2/s/r/inverted_dehazing/data/histograms_idrid_data/separability_consistency/separability.csv')\
+    _sep = pd.read_csv('data/histograms_idrid_data/separability_consistency/separability.csv')\
         .query('lesion_name!="OD"')\
         .groupby(['method_name', 'lesion_name'])[['red', 'green', 'blue']]\
         .mean().stack().groupby('method_name').mean().rename('Averaged Separability (IDRiD)')
