@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # find list of images that the identity model gets wrong.
 # visualize GradCAM for that image.
 # take the best performing image and visualize gradcam for it too.

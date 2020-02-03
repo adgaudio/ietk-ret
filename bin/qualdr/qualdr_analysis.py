@@ -1,6 +1,5 @@
 #!/usr/bin/env -S ipython --no-banner -i --
 """
-./bin/qualdr_analysis.py --ns 'Qtest1.3'
 ./bin/qualdr_analysis.py --ns 'Qtest2'
 """
 from matplotlib import pyplot as plt
@@ -53,6 +52,7 @@ if __name__ == "__main__":
     ).reset_index()
     tm['category'] = tm.reset_index()['level_1'].replace(regex={'MCC_hard_(.*)_test': r'\1'}).values
     table = tm.set_index(['category', 'method']).apply(lambda x: '%0.3f (%0.3f)' % (x['MCC'], x['(delta)']), axis=1)
+    print(table.to_string())
     #  table.to_latex('')  # TODO
 
     # correlate these to the validation scores.
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     ##
     ### Correlation to separability score -- cross dataset comparison
     ##
-    _sep = pd.read_csv('/home/alex2/s/r/inverted_dehazing/data/histograms_data/separability_consistency/separability.csv')\
+    _sep = pd.read_csv('/home/alex2/s/r/inverted_dehazing/data/histograms_idrid_data/separability_consistency/separability.csv')\
         .query('lesion_name!="OD"')\
         .groupby(['method_name', 'lesion_name'])[['red', 'green', 'blue']]\
         .mean().stack().groupby('method_name').mean().rename('Averaged Separability (IDRiD)')
@@ -100,6 +100,7 @@ if __name__ == "__main__":
 
     _sep2.columns = [re.sub('MCC_hard_(.*?)_test', r'\1', x)
                      for x in _sep2.columns]
+    _sep2.index = [f'avg{x.count("+")}:{x}' if '+' in x else x for x in _sep2.index]
     sep = _sep2.join(_sep)
 
     fig, axs = plt.subplots(1, 3, sharex=True, sharey=True)
@@ -127,11 +128,6 @@ if __name__ == "__main__":
         # the QualDR grading task.
 
 """
-    #  1. get mean (or max?) MCC results across N runs, pass into some sort of
-    #  significance test to report difference from identity.
-    #  2. Look at best model's CM_soft (as avg of 5 runs).  what happens to MX?  Do the distributions shift right slightly?
-    #  3. GradCAM explanation of model's outputs - Is the model finding features that are not labeled?
-
     idea: take trained identity model.  get output distribution on a minibatch.  then, "fine-tune" it by trying combinations of inputs that improve perf (maybe just brute force) using botorch?
       --> this approach may naturally favor models that are most like identity
       so it may prevent preprocessing methods that are really good but
