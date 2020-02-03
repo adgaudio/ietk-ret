@@ -10,7 +10,7 @@ import pandas as pd
 import glob
 import re
 import seaborn as sns
-from os.path import join
+from os.path import join, dirname
 import os
 from matplotlib import pyplot as plt
 import seaborn as sns
@@ -42,10 +42,14 @@ def get_separability_scores(fps):
 if __name__ == "__main__":
     save_img_dir='./data/histograms_idrid_plots/separability_consistency'
     os.makedirs(save_img_dir, exist_ok=True)
+    save_csv_fp='./data/histograms_idrid_data/separability_consistency/separability.csv'
+    os.makedirs(save_img_dir, exist_ok=True)
+    os.makedirs(dirname(save_csv_fp), exist_ok=True)
     fps = glob.glob('./data/histograms_idrid_data/IDRiD*.npz')
 
     df = get_separability_scores(fps)
     df['method_name'] = df['method_name'].apply(lambda x: 'avg%s:%s' % (x.count('+'), x) if '+' in x else x)
+    df.to_csv(save_csv_fp)
 
     print('separability plots')
     # KS score, per channel

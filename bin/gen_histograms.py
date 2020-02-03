@@ -117,6 +117,8 @@ def bap():
 if __name__ == "__main__":
     # use like this
     # python  gen_histograms.py --labels MA HE --methods "Unmodified Image" "Sharpen, t=0.15" --img-ids IDRiD_01 IDRiD_02
+    # or faster:
+    # seq -f '%02g' 54 -1 1 | parallel -j 8 python bin/gen_histograms.py --img-ids IDRiD_{}
     import argparse as ap
     NS = bap().parse_args()
     print(NS)
