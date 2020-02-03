@@ -16,7 +16,7 @@ from PIL import Image
 import numpy as np
 import pickle
 
-from iciar2020 import preprocess, pil_to_numpy
+from qualdr_grading import preprocess, pil_to_numpy
 
 
 def bap():

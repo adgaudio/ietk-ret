@@ -4,7 +4,8 @@
 set -e
 set -u
 
-cd "$(dirname "$(dirname "$(realpath "$0")")")"
+# ensure running from repo root.
+cd "$(dirname "$(dirname "$(dirname "$(realpath "$0")")")")"
 pwd
 
 . ./bin/bash_lib.sh

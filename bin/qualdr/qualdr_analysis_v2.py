@@ -9,7 +9,7 @@ import numpy as np
 import re
 import torch
 
-import model_configs.iciar2020 as IC
+import model_configs.qualdr_grading as IC
 import screendr.datasets as D
 
 
