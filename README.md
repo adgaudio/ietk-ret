@@ -1,4 +1,4 @@
-# IETK - Image Enhancement Toolkit
+# IETK-Ret - Image Enhancement Toolkit for Retinal Fundus Images
 
 A theory for image distortion due to scattering of light can be used to
 create a variety of image enhancement methods.
