@@ -2,9 +2,20 @@ import cv2.ximgproc
 import numpy as np
 from matplotlib import pyplot as plt
 import scipy.ndimage as ndi
+import logging
 
 from ietk.data import IDRiD
 from ietk import util
+
+log = logging.getLogger(__name__)
+
+
+def check_and_fix_nan(A, replacement_img):
+    nanmask = np.isnan(A)
+    if nanmask.any():
+        log.warn("sharpen: guided filter blurring operation or laplace filter returned nans. your input image has extreme values")
+        A[nanmask] = replacement_img[nanmask]
+    return A
 
 
 def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
@@ -36,11 +47,11 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
         img.astype('float32'),
         img.astype('float32'),
         blur_radius, blur_guided_eps)
-    #  assert np.isnan(A).sum() == 0
 
     if t == 'laplace':
         t = 1-util.norm01(sharpen(ndi.morphological_laplace(
             img, (2,2,1), mode='wrap'), bg, 0.15), bg)
+        #  note: if laplace is all zeros (due to bad input img), t will be all nan.
         #  t = 1-util.norm01(ndi.morphological_laplace(
             #  img, (2,2,1), mode='wrap'), bg)
 
@@ -57,13 +68,14 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
         J[bg] = 0
 
     if not use_guidedfilter:
+        J = check_and_fix_nan(J, img)
         return J
 
     r2 = cv2.ximgproc.guidedFilter(
         img.astype('float32'),
         J.astype('float32'),
         2, 1e-8)
-    #  assert np.isnan(r2).sum() == 0
+    r2 = check_and_fix_nan(r2, img)
     if bg is not None:
         r2[bg] = 0
     return r2
