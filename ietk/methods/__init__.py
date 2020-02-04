@@ -38,11 +38,11 @@ def Z(img):
 all_methods = {
     'identity': lambda img, focus_region, **kwargs: img,
     'A': lambda img, focus_region, **kwargs: sharpen_img.sharpen(solveJ(img, 0, ta(img)), ~focus_region),
-    'A2': lambda img, focus_region, **kwargs: solveJ(img, 0, ta(img)),
+    #  'A2': lambda img, focus_region, **kwargs: solveJ(img, 0, ta(img)),
     'B': lambda img, focus_region, **kwargs: sharpen_img.sharpen(solveJ(img, 0, tb(img)), ~focus_region),
     'C': lambda img, focus_region, **kwargs: sharpen_img.sharpen(solveJ(img, 0, tc(img)), ~focus_region),
-    'C2': lambda img, focus_region, **kwargs: sharpen_img.sharpen(sharpen_img.sharpen(solveJ(img, 0, tc(img)), ~focus_region), ~focus_region),
-    'C3': lambda img, focus_region, **kwargs: sharpen_img.sharpen(sharpen_img.sharpen(sharpen_img.sharpen(solveJ(img, 0, tc(img)), ~focus_region), ~focus_region), ~focus_region),
+    #  'C2': lambda img, focus_region, **kwargs: sharpen_img.sharpen(sharpen_img.sharpen(solveJ(img, 0, tc(img)), ~focus_region), ~focus_region),
+    #  'C3': lambda img, focus_region, **kwargs: sharpen_img.sharpen(sharpen_img.sharpen(sharpen_img.sharpen(solveJ(img, 0, tc(img)), ~focus_region), ~focus_region), ~focus_region),
     'D': lambda img, focus_region, **kwargs: sharpen_img.sharpen(solveJ(img, 0, td(img)), ~focus_region),
     'W': lambda img, focus_region, **kwargs: sharpen_img.sharpen(solveJ(img, 1, ta(img)), ~focus_region),
     'X': lambda img, focus_region, **kwargs: sharpen_img.sharpen(solveJ(img, 1, tb(img)), ~focus_region),
@@ -59,7 +59,7 @@ all_methods = {
 _m = all_methods
 all_methods.update({
     'A+B': lambda img, focus_region: sharpen_img.sharpen(A(img)/2 + B(img)/2, ~focus_region),
-    'sA+sB2': lambda img, focus_region: _m['A'](img=img,focus_region=focus_region)/2 + _m['B'](img=img,focus_region=focus_region)/2,
+    #  'sA+sB2': lambda img, focus_region: _m['A'](img=img,focus_region=focus_region)/2 + _m['B'](img=img,focus_region=focus_region)/2,
     'B+C': lambda img, focus_region: sharpen_img.sharpen(B(img)/2 + C(img)/2, ~focus_region),
     'B+X': lambda img, focus_region: sharpen_img.sharpen(B(img)/2 + X(img)/2, ~focus_region),
     'A+B+C': lambda img, focus_region: sharpen_img.sharpen(A(img)/3 + B(img)/3 + C(img)/3, ~focus_region),

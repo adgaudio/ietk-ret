@@ -97,8 +97,8 @@ def main(ns):
         if os.path.exists(data_3d_fp):
             print(f'3d histogram data file exists, not re-creating: {data_3d_fp}')
         else:
-            H = np.histogramdd(healthy.clip(0-1/255,1+1/255), bins=258, range=[(0,256)]*3)[0]
-            D = np.histogramdd(diseased.clip(0-1/255,1+1/255), bins=256, range=[(0,256)]*3)[0]
+            H = np.histogramdd(healthy.clip(0-1/255,1+1/255), bins=256+2, range=[(-1,257)]*3)[0]
+            D = np.histogramdd(diseased.clip(0-1/255,1+1/255), bins=256+2, range=[(-1,257)]*3)[0]
             np.savez_compressed(data_3d_fp, healthy=H, diseased=D)
 
 

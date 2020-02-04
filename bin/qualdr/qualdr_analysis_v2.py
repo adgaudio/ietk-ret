@@ -9,9 +9,10 @@ from matplotlib import pyplot as plt
 import numpy as np
 import re
 import torch
+import torchvision.transforms as tvt
 
-import model_configs.qualdr_grading as IC
 import screendr.datasets as D
+import model_configs.qualdr_grading as IC  # might need PYTHONPATH=.:$PYTHONPATH
 
 
 def parse_method_name(run_id):
@@ -22,8 +23,9 @@ def load_model(checkpoint_fp, device):
     model_name = 'efficientnet-b4'
     model = EfficientNet.from_pretrained(model_name, num_classes=13)
     checkpoint = torch.load(checkpoint_fp, map_location=device)
-    model = model.load_state_dict(checkpoint['model_state_dict'])
+    model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device)
+    model.eval()
     return model
 
 
@@ -32,24 +34,23 @@ def get_difficult_imgs(checkpoint_fps, dsets, device):
     failed_img_fps = []
     poor_quality_img_fps = []
     # --> load identity model
-    model_identity = load_model(checkpoint_fps['identity'])
-    for X, y, fp in torch.utils.data.RandomSampler(
-            dsets['identity_for_finding_failures']):
-        X.to(device)
-        y.to(device)
-        yhat = model_identity(X).squeeze()
+    #  model_identity = load_model(checkpoint_fps['identity'], device)
+    model_identity = load_model(checkpoint_fps['photocoagulation'], device)
+    print(dsets)
+    for X, y, fp in torch.utils.data.DataLoader(dsets['identity_for_finding_failures'], shuffle=True):
+        X = X.to(device)
+        y = y.squeeze()
+        yhat = model_identity(X).squeeze().to('cpu')
         # --> was the model wrong?
         for k, (s, e) in D.QualDR_Grading.GRADES_FLAT_IDX_RANGES:
-            yh = yhat[:, s:e]
-            #  _onehot = torch.zeros_like(yh)
-            #  _onehot[torch.arange(e-s).repeat(batch_size, 1) == yh.argmax(1).reshape(-1, 1)] = 1
-            #  yh = _onehot
-            model_was_wrong = yh.argmax() != y.argmax()
+            yh = yhat[s:e]
+            yt = y[s:e]
+            model_was_wrong = yh.argmax() != yt.argmax()
             if model_was_wrong:
-                failed_img_fps.append((k, fp))
+                failed_img_fps.append((k, fp, yh[yh.argmax()].item()))
             if y[e-1] == 1:
-                poor_quality_img_fps.append((k, fp))
-            import IPython ; IPython.embed() ; import sys ; sys.exit()
+                poor_quality_img_fps.append(
+                    (k, fp, 'wrong' if model_was_wrong else 'correct'))
     return {'failed': failed_img_fps, 'poor_quality': poor_quality_img_fps}
 
 
@@ -65,11 +66,11 @@ def preprocess_image(img, cat):
 
 N = 4  # num images to gradcam-ize
 device = 'cuda:1'
-run_ids = {
-    'identity': 'Q1-identity',
+run_ids = {  # TODO: update these
+    'identity': 'Q2-identity',
     'retinopathy': 'Q1-A',
     'maculopathy': 'Q1-sA+sB+sC+sW+sX',
-    'photocoagulation': 'Q1-B+X',
+    'photocoagulation': 'Q2-A+B',
 }
 
 # checkpoints
@@ -84,11 +85,9 @@ dsets = {
         img_transform=IC.qualdr_preprocessed_img_transform(
             IC.BDSQualDR, 'test'),
         getitem_transform=lambda x: (
-                x['image'],
-                D.QualDR_Grading.get_diagnosis_grades(
-                    x['json']),
-            x['fp']),
-                    ),
+            x['image'],
+            D.QualDR_Grading.get_diagnosis_grades(x['json']),
+            x['fp'])),
     'qualdr_for_gradcam': D.QualDR(
                         default_set='test',
                         img_transform=None,
@@ -103,26 +102,28 @@ dsets = {
 # find which images the identity messes up on
 difficult_img_fps = get_difficult_imgs(checkpoint_fps, dsets, device)
 
-import sys ; sys.exit()
+# TODO: what to do with poor quality imgs?
 
 # evaluate gradcam on each of the models and failed imgs.
-for fp in failed_img_fps[:N]:
+
+model_identity = load_model(checkpoint_fps['identity'], device)
+for fp in difficult_img_fps['failed'][:N]:
     # load img.
     orig_img = plt.imread(fp)
     for cat in run_ids:
-        model = load_model(cat)
+        model = load_model(checkpoint_fps[cat], device)
         img = preprocess_image(orig_img, cat)
-        img.to(device)
+        img = tvt.functional.to_tensor(img).to(device)
         # evaluate gradcam
         #  yhat = model(img)
         #  TODO ... GradCAM and save result.
 
         # TODO?: evaluate whether identity model improves with preprocessing
         # (why should I do this?
-        if cat != 'identity':
-            yhat = model_identity(orig_img)
-            yhat = model_identity(img)
-            ...  # maybe visualize differences in distribution.  does it shift?
+        #  if cat != 'identity':
+        #      yhat = model_identity(orig_img)
+        #      yhat = model_identity(img)
+            #  ...  # maybe visualize differences in distribution.  does it shift?
             # or maybe more appropriate to just evaluate test performance on a
             # different pickled dict test set.
 

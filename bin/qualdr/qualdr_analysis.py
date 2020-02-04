@@ -4,9 +4,10 @@
 """
 from matplotlib import pyplot as plt
 import numpy as np
-import scipy.stats
+import os
 import pandas as pd
 import re
+import scipy.stats
 import seaborn as sns
 
 from screendr.plot_perf import _mode1_get_frames, bap
@@ -27,33 +28,38 @@ if __name__ == "__main__":
 
     ns = NS
 
+    base_dir = f'{ns.data_dir}/plots/qualdr'
+    os.makedirs(base_dir, exist_ok=True)
     dfs = {(run_id, parse_run_id(run_id)): tmpdf
            for (run_id, _), tmpdf in _mode1_get_frames(ns)}
     print(dfs.keys())
-    cdfs = pd.concat(dfs, sort=False, names=['run_id', 'method'])
+    cdfs = pd.concat(dfs, sort=False, names=['run_id', 'Method'])
 
-    cdfs.sort_index(level='method', inplace=True)
+    cdfs.sort_index(level='Method', inplace=True)
     cols = [x for x in cdfs.columns if 'MCC_hard' in x]
 
     # print the best performing models.
-    z = cdfs.groupby('method').mean()
+    z = cdfs.groupby('Method').mean()
     z2 = (z - z.loc['identity'].values)
     # --> plot all models
     ax = z2[cols].plot.bar()
-    ax.set_ylabel('MCC (QualDR Test set)')
+    #  ax.set_ylabel('MCC (QualDR Test set)')
+    ax.set_ylabel('Delta MCC on QualDR Test\n(relative difference from identity)')
     ax.set_xlabel('Preprocessing Method')
     ax.figure.tight_layout()
-    #  ax.figure.savefig('')  # TODO
+    ax.figure.savefig(f'{base_dir}/qualdr_mcc_top_models.png')
     # --> report the top 3 models
-    top_models = z[cols].stack().groupby(level=1).nlargest(1).reset_index(level=0, drop=True).rename('MCC')
+    N = 3
+    top_models = z[cols].stack().groupby(level=1).nlargest(N).reset_index(level=0, drop=True).rename('MCC')
     tm = top_models = top_models.to_frame().join(
-        z2[cols].stack().groupby(level=1).nlargest(1)
+        z2[cols].stack().groupby(level=1).nlargest(N)
         .reset_index(level=0, drop=True).rename('(delta)')
     ).reset_index()
-    tm['category'] = tm.reset_index()['level_1'].replace(regex={'MCC_hard_(.*)_test': r'\1'}).values
-    table = tm.set_index(['category', 'method']).apply(lambda x: '%0.3f (%0.3f)' % (x['MCC'], x['(delta)']), axis=1)
+    tm['Category'] = tm.reset_index()['level_1'].replace(regex={'MCC_hard_(.*)_test': r'\1'}).values
+    table = tm.set_index(['Category', 'Method']).apply(lambda x: '%0.3f (%0.3f)' % (x['MCC'], x['(delta)']), axis=1).rename('MCC (delta)').reset_index()
+    table = table.replace({'retinopathy': 'DR', 'maculopathy': 'MD', 'photocoagulation': 'PC'}).set_index(['Category', 'Method'])
     print(table.to_string())
-    #  table.to_latex('')  # TODO
+    table.to_latex(f'{base_dir}/qualdr_mcc_top_models.tex', multirow=True, column_format='|lll')
 
     # correlate these to the validation scores.
     # TODO
@@ -63,8 +69,8 @@ if __name__ == "__main__":
     #  run_ids = [(x[0], x[1][0]) for x in cdfs[cols].idxmax().iteritems()]
     #  print(run_ids)
     #  # --> runs with closest perf to identity
-    #  #  mrl = method_runid_lookup = dict(cdfs.reset_index('epoch', drop=True).index.swaplevel(0,1).values)
-    #  #  assert len(method_runid_lookup) == cdfs.shape[0], "bug: multiple run_ids match same method"
+    #  #  mrl = Method_runid_lookup = dict(cdfs.reset_index('epoch', drop=True).index.swaplevel(0,1).values)
+    #  #  assert len(Method_runid_lookup) == cdfs.shape[0], "bug: multiple run_ids match same Method"
     #  #  run_ids = [(x[0], mrl[x[1]]) for x in z2[cols].drop('identity', axis=0).abs().idxmin().iteritems()]
 
     #  CMs, CMs_identity = [], []
@@ -95,8 +101,8 @@ if __name__ == "__main__":
         .query('lesion_name!="OD"')\
         .groupby(['method_name', 'lesion_name'])[['red', 'green', 'blue']]\
         .mean().stack().groupby('method_name').mean().rename('Averaged Separability (IDRiD)')
-    _sep.index.rename('method', inplace=True)
-    _sep2 = cdfs[cols].groupby('method').mean()
+    _sep.index.rename('Method', inplace=True)
+    _sep2 = cdfs[cols].groupby('Method').mean()
 
     _sep2.columns = [re.sub('MCC_hard_(.*?)_test', r'\1', x)
                      for x in _sep2.columns]
@@ -115,7 +121,7 @@ if __name__ == "__main__":
         ax.legend([f'$R^2$ = {np.round(rv[2], 2)}'])
     axs[0].set_ylabel('MCC (QualDR Test)')
     axs[1].set_xlabel('Avg. Lesion Separability Score (IDRiD Train)')
-    #  fig.savefig('')  # TODO
+    fig.savefig(f'{base_dir}/correlation_sep_mcc.png')
     # conclusions:
     # - suggests better color separation does improve model performance.
     # - but something other color separation is also important for retinopathy grading.
