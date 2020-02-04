@@ -6,3 +6,4 @@ __pycache__
 paper/
 old/
 *.egg-info/
+third_party
