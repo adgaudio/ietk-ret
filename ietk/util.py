@@ -16,7 +16,7 @@ def get_foreground(img, is_01_normalized=True):
     return center_crop_and_get_foreground_mask(img, False, is_01_normalized)[1]
 
 
-def center_crop_and_get_foreground_mask(im, crop=True, is_01_normalized=True):
+def get_center_circle_coords(im, is_01_normalized: bool):
     A = np.dstack([
         signal.cspline2d(im[:,:,ch] * (255 if is_01_normalized else 1), 200.0)
         for ch in range(im.shape[-1])])
@@ -30,8 +30,16 @@ def center_crop_and_get_foreground_mask(im, crop=True, is_01_normalized=True):
         circles = cv2.HoughCircles(
             (A2*255).astype('uint8'), cv2.HOUGH_GRADIENT, .8,
             min(A.shape[:2]), param1=20, param2=10, minRadius=400, maxRadius=2500)[0]
-    h, w, _ = im.shape
     x, y, r = circles[circles[:, -1].argmax()].round().astype('int')
+    return x,y,r
+
+
+def center_crop_and_get_foreground_mask(im, crop=True, is_01_normalized=True, center_circle_coords=None):
+    if center_circle_coords is not None:
+        x,y,r = center_circle_coords
+    else:
+        h, w, _ = im.shape
+        x, y, r = get_center_circle_coords(im, is_01_normalized)
     mask = np.zeros(im.shape[:2], dtype='uint8')
     cv2.circle(mask, (x, y), r, 255, cv2.FILLED)
     mask = mask.astype(bool)
