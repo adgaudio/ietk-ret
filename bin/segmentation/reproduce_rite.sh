@@ -20,10 +20,18 @@ pwd
 
 
 # using a subset of models from 
-models="A A2 B C C2 C3 D W X Y Z A+X C+X A+C A+Z A+C+X A+C+X+Z A+B sA+sB2 B+C B+X A+B+C A+B+X B+C+X A+B+C+X A+B+C+W+X sA+sX sC+sX sA+sC sA+sZ sA+sC+sX sA+sC+sX+sZ sA+sB sB+sC sB+sX sA+sB+sC sA+sB+sX sB+sC+sX sA+sB+sC+sX sA+sB+sC+sW+sX identity"
+models="A A2 B C C2 C3 D W X Y Z A+X C+X A+C A+Z A+C+X A+C+X+Z A+B B+C B+X A+B+C A+B+X B+C+X A+B+C+X A+B+C+W+X sA+sX sC+sX sA+sC sA+sZ sA+sC+sX sA+sC+sX+sZ sA+sB sB+sC sB+sX sA+sB+sC sA+sB+sX sB+sC+sX sA+sB+sC+sX sA+sB+sC+sW+sX identity"
 (
+# for mdl in $models ; do
+#   echo R1-$mdl python -m screendr model_configs BDSSegment \
+#     --data-name rite --ietk-method-name $mdl \
+#     --epochs 120 \
+#     --checkpoint-fname 'epoch_best.pth'
+# done
+
+# fix bug in sharpen that it doesn't work for small imgs.
 for mdl in $models ; do
-  echo R1-$mdl python -m screendr model_configs BDSSegment \
+  echo R2-$mdl python -m screendr model_configs BDSSegment \
     --data-name rite --ietk-method-name $mdl \
     --epochs 120 \
     --checkpoint-fname 'epoch_best.pth'

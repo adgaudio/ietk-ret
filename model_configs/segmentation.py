@@ -263,8 +263,18 @@ class BDSSegment(api.FeedForwardModelConfig):
         if checkpoint:
             self._early_stopping = checkpoint['_early_stopping']
 
+    debug_visualize_preprocessing = False
     def run(self):
-        if self.data_use_train_set:
+        if self.debug_visualize_preprocessing:
+            from matplotlib import pyplot as plt
+            plt.ion()
+            for x,y in self.datasets.rite_train:
+                x = x.permute(1,2,0).numpy()
+                plt.imshow(x) ; #plt.pause(0.4)
+                plt.gcf().suptitle(self.ietk_method_name)
+                plt.waitforbuttonpress()
+            import IPython ; IPython.embed() ; import sys ; sys.exit()
+        elif self.data_use_train_set:
             self.train()
         else:
             self.model.eval()
@@ -278,7 +288,7 @@ if __name__ == "__main__":
 
     from matplotlib import pyplot as plt
 
-    
+
     def testing():
         dset = D.RITE(img_transform=None, getitem_transform=getitem_transforms(
             'val', 'identity',

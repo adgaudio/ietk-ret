@@ -19,7 +19,7 @@ def check_and_fix_nan(A, replacement_img):
 
 
 def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
-            use_guidedfilter=True):
+            use_guidedfilter='if_large_img'):
     """Use distortion model to deblur image.  Equivalent to usharp mask:
 
         1/t * img - (1-1/t) * blurry(img)
@@ -32,6 +32,10 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
         can be scalar, matrix of same (h, w) as img, or 3 channel image.
         By default, use a multi-channel sharpened laplace filter on a smoothed
         image with 10x10 kernel. For enhancing fine details in large images.
+    use_guidedfilter - a bool or the string 'if_large_img' determining whether
+        to clean up the resulting sharpened image.  If the min image dimension is
+        less that 1000, this cleanup operation will significantly blur the
+        image, ruining its quality.
     """
     if bg is None:
         bg = np.zeros(img.shape[:2], dtype='bool')
@@ -67,6 +71,11 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
     if bg is not None:
         J[bg] = 0
 
+    # applying a guided filter for smoothing image at this point can be
+    # problematic to the image quality, significantly blurring it.
+    if use_guidedfilter == 'if_large_img':
+        # note: at some point, find a better threshold?  This works.
+        use_guidedfilter = min(J.shape[0], J.shape[1]) > 1400
     if not use_guidedfilter:
         J = check_and_fix_nan(J, img)
         return J
@@ -104,15 +113,15 @@ if __name__ == "__main__":
     axs[0].set_title('Unmodified image')
     axs[1].imshow(J)
     axs[1].set_title('Sharpened')
-
     #  axs[2].imshow(J_nogf)
     #  axs[2].set_title('Sharpened without guided filter')
     [ax.axis('off') for ax in axs]
     f.savefig('./paper/figures/sharpen_fundus.png', bbox_inches='tight')
-    plt.show()
+
     #  plt.figure(num=4) ; plt.imshow(util.norm01(r2, bg))
     #  plt.figure(num=5) ; plt.imshow(r2.clip(0, 1))
 
+    plt.show()
     #  import evaluation as EV
     #  import metric
 
