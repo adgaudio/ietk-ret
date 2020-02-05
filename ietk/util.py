@@ -20,16 +20,18 @@ def get_center_circle_coords(im, is_01_normalized: bool):
     A = np.dstack([
         signal.cspline2d(im[:,:,ch] * (255 if is_01_normalized else 1), 200.0)
         for ch in range(im.shape[-1])])
+    min_r = int(min(im.shape[0], im.shape[1]) / 4)
+    max_r = int(max(im.shape[0], im.shape[1]) / 4*3)
     try:
         circles = cv2.HoughCircles(
             (norm01(A).max(-1)*255).astype('uint8'), cv2.HOUGH_GRADIENT, .8,
-            min(A.shape[:2]), param1=20, param2=50, minRadius=400, maxRadius=2500)[0]
+            min(A.shape[:2]), param1=20, param2=50, minRadius=min_r, maxRadius=max_r)[0]
     except:
         log.warn('center_crop_and_get_foreground_mask failed to get background - trying again with looser parameters')
         A2 = get_foreground_slow(im)
         circles = cv2.HoughCircles(
             (A2*255).astype('uint8'), cv2.HOUGH_GRADIENT, .8,
-            min(A.shape[:2]), param1=20, param2=10, minRadius=400, maxRadius=2500)[0]
+            min(A.shape[:2]), param1=20, param2=10, minRadius=min_r, maxRadius=max_r)[0]
     x, y, r = circles[circles[:, -1].argmax()].round().astype('int')
     return x,y,r
 
