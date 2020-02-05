@@ -10,13 +10,23 @@ pwd
 
 . ./bin/bash_lib.sh
 
+# 1. FIRST, create the pre-processed datasets to resize the images smaller.
+# This can take about a day because
+# I create one QualDR dataset for each ietk color processing method, and
+# the affine transform resizing operation is slow.
+# This is unnecessary and extremely inefficient, since the ietk method can
+# simply be applied to a 512x512 image.  But I wanted to test it this way
+# to ensure one of the experiments in the paper used full size images.
 
+# python ./bin/qualdr/qualdr_create_preprocessed_pickle_datasets.py
+
+# 2. SECOND, train models (the bulk of the document below)
 # how to run jobs
 # - this can run locally on your computer.
 # - `run_gpus` takes care of logging, race conditions and lock files, and making use of multiple gpus.
 #    In particular, it sets an env var (device=cuda:X) asking the screendr project to use a particular gpu.
 # - test_my_run_id is the name of your experiment
-# your experiments here, identified by name.  The results show up in ./data/results/test_my_run_id and ./data/results/test_my_other_experiment
+# The results show up in ./data/results/test_my_run_id and ./data/results/test_my_other_experiment
 
 # find a learning rate
 # (
@@ -99,3 +109,13 @@ for mdl in $models ; do
 done
 ) | run_gpus
 # TODO: do I also want some results with W models?
+
+
+
+# 3. THIRD, run analysis scripts to generate plots.  They may require certain
+# directory structure.  Sorry about that.
+# --> show all results at once
+# python -m screendr.plot_perf "Q2"
+# --> some analysis presented in paper
+# ./bin/qualdr/qualdr_analysis.py
+# ./bin/qualdr/qualdr_analysis_v2.py
