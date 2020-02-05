@@ -40,14 +40,9 @@ def preprocess(img_mask_tensor, method_name,
     im = img_mask_tensor[:,:,:3]
     label_mask = img_mask_tensor[:,:,3:]
     h, w, ch = im.shape
-    # --> center crop to minimize background
-    x, y, r = ietk.util.get_center_circle_coords(im, is_01_normalized=False)
-    crop_slice = np.s_[max(0,y-r):min(h,y+r),max(0,x-r):min(w,x+r)]
-    im = im[crop_slice]
-    label_mask = label_mask[crop_slice]
-    # --> get focus region (for ietk enhancement)
-    _, fg = ietk.util.center_crop_and_get_foreground_mask(
-        im, crop=False, is_01_normalized=False, center_circle_coords=(x,y,r))
+    # --> get forground and center crop to minimize background
+    im, fg, label_mask = ietk.util.center_crop_and_get_foreground_mask(
+        im, is_01_normalized=False, label_img=label_mask)
     # --> enhance via ietk method A+B+X or whatever
     im = ietk.methods.all_methods[method_name](im/255, focus_region=fg)
     im = im.clip(0,1) * 255
@@ -56,7 +51,7 @@ def preprocess(img_mask_tensor, method_name,
     stack = affine_transform(stack, size=resize_to, **affine_transform_kws)
     # --> random crop
     if resize_to != crop_to_size:
-        stack = random_crop(im, crop_to_size)
+        stack = random_crop(stack, crop_to_size)
     # --> undo the stack and restore proper types, normalized in [0,1]
     im, label_mask = (stack[:,:,:ch]/255).astype('float32'), stack[:,:,ch:].astype(bool)
     im = torch.tensor(im, dtype=torch.float32).permute(2,0,1)
@@ -89,6 +84,17 @@ def loss_cross_entropy_per_output_channel(input, target):
     #      for x in range(target.shape[1])])
     #  losses.backward = (losses.sum()/target.nelement()).backward
     #  return losses
+
+
+def IDRiD_Segmentation_PREPROCESSED(base_dir):
+    """Load the pickled dataset with a different base directory"""
+    def _IDRiD_Segmentation_wrapper(use_train_set, *, getitem_transform, **kwargs):
+        train_or_test = 'train' if use_train_set else 'test'
+        return D.PickledDicts(
+            base_dir.format(train_or_test=train_or_test),
+            getitem_transform=lambda dct: getitem_transform(dct['tensor']),
+            **kwargs)
+    return _IDRiD_Segmentation_wrapper
 
 
 class BDSSegment(api.FeedForwardModelConfig):
@@ -136,6 +142,7 @@ class BDSSegment(api.FeedForwardModelConfig):
         'data', {'name': 'rite',  # choices: idrid, rite
                  'use_train_set': True,  # otherwise use test set
                  'train_val_split': 0.8,  # use random 20% of train set as validation
+                 'idrid_base_dir': './data/preprocessed/idrid-identity/{train_or_test}',
                  })
     __ietk_params = api.CmdlineOptions(
         # which preprocessing method to use
@@ -163,8 +170,8 @@ class BDSSegment(api.FeedForwardModelConfig):
     def get_datasets(self):
         dsets = {}
         dsets.update(self._get_datasets(
-            'idrid', D.IDRiD_Segmentation,
-            D.IDRiD_Segmentation.as_tensor(return_numpy_array=True)))
+            'idrid', IDRiD_Segmentation_PREPROCESSED(self.data_idrid_base_dir),
+            lambda x: x)) #D.IDRiD_Segmentation.as_tensor(return_numpy_array=True)))
         dsets.update(self._get_datasets(
             'rite', D.RITE, D.RITE.as_tensor(['vessel'], return_numpy_array=True)))
         return super().get_datasets(dsets)
@@ -268,7 +275,8 @@ class BDSSegment(api.FeedForwardModelConfig):
         if self.debug_visualize_preprocessing:
             from matplotlib import pyplot as plt
             plt.ion()
-            for x,y in self.datasets.rite_train:
+            tt = 'train' if self.data_use_train_set else 'test'
+            for x,y in self.datasets._asdict()[f'{self.data_name}_{tt}']:
                 x = x.permute(1,2,0).numpy()
                 plt.imshow(x) ; #plt.pause(0.4)
                 plt.gcf().suptitle(self.ietk_method_name)

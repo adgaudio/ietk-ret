@@ -30,10 +30,17 @@ models="A A2 B C C2 C3 D W X Y Z A+X C+X A+C A+Z A+C+X A+C+X+Z A+B B+C B+X A+B+C
 # done
 
 # fix bug in sharpen that it doesn't work for small imgs.
+# fix bugs in preprocessing steps
 for mdl in $models ; do
-  echo R2-$mdl python -m screendr model_configs BDSSegment \
+  echo I1-$mdl python -m screendr model_configs BDSSegment \
+    --data-name idrid --ietk-method-name $mdl \
+    --epochs 100 \
+    --checkpoint-fname 'epoch_best.pth'
+done
+for mdl in $models ; do
+  echo R1.3-$mdl python -m screendr model_configs BDSSegment \
     --data-name rite --ietk-method-name $mdl \
-    --epochs 120 \
+    --epochs 80 \
     --checkpoint-fname 'epoch_best.pth'
 done
 # for mdl in $models ; do
@@ -42,7 +49,6 @@ done
     # --no-data-use-train-set
 # done
 ) | run_gpus
-# TODO: do I also want some results with W models?
 
 # when testing, set this to 1:
     # --data-train-val-split 0.8
