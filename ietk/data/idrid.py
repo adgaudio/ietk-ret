@@ -37,20 +37,24 @@ class IDRiD:
     'OD' - Optic Disc Segmentation (not used for Diabetic Retinopathy)
     """
     labels = ('MA', 'HE', 'EX', 'SE', 'OD')
-    def __init__(self, base_dir='./data/IDRiD_segmentation', train=True):
+    def __init__(self, base_dir='./data/IDRiD_segmentation', train=True,
+                 convert_pil_to_numpy=True):
         """base_dir - (str) filepath to the IDRiD Segmentation dataset"""
-        if train is not True:
-            raise NotImplementedError('we use training images only for now')
+        if train:
+            train_or_test_dirname = 'a. Training Set'
+        else:
+            train_or_test_dirname = 'b. Testing Set'
+        self.convert_pil_to_numpy = convert_pil_to_numpy
 
         # get filepaths to images
         _img_fp_globexpr = {
-            'imgs': '{base_dir}/1. Original Images/a. Training Set/*',
-            #  'labels': '{base_dir}/2. All Segmentation Groundtruths/a. Training Set/**'
-            'MA': '{base_dir}/2. All Segmentation Groundtruths/a. Training Set/1. Microaneurysms/*',
-            'HE': '{base_dir}/2. All Segmentation Groundtruths/a. Training Set/2. Haemorrhages/*',
-            'EX': '{base_dir}/2. All Segmentation Groundtruths/a. Training Set/3. Hard Exudates/*',
-            'SE': '{base_dir}/2. All Segmentation Groundtruths/a. Training Set/4. Soft Exudates/*',
-            'OD': '{base_dir}/2. All Segmentation Groundtruths/a. Training Set/5. Optic Disc/*',
+            'imgs': f'{base_dir}/1. Original Images/{train_or_test_dirname}/*',
+            #  'labels': '{base_dir}/2. All Segmentation Groundtruths/{train_or_test_dirname}/**'
+            'MA': f'{base_dir}/2. All Segmentation Groundtruths/{train_or_test_dirname}/1. Microaneurysms/*',
+            'HE': f'{base_dir}/2. All Segmentation Groundtruths/{train_or_test_dirname}/2. Haemorrhages/*',
+            'EX': f'{base_dir}/2. All Segmentation Groundtruths/{train_or_test_dirname}/3. Hard Exudates/*',
+            'SE': f'{base_dir}/2. All Segmentation Groundtruths/{train_or_test_dirname}/4. Soft Exudates/*',
+            'OD': f'{base_dir}/2. All Segmentation Groundtruths/{train_or_test_dirname}/5. Optic Disc/*',
         }
         self.fps = {  # format: {'MA: {'IDRiD_41': './path/to/image'}}
             k: {re.sub(r'(IDRiD_\d{2}).*', r'\1', basename(imgfp)): imgfp
@@ -72,7 +76,8 @@ class IDRiD:
         """
         with PIL.Image.open(self.fps['imgs'][img_id]) as img:
             img.load()
-            img = np.array(img) / 255
+            if self.convert_pil_to_numpy:
+                img = np.array(img) / 255
         if labels is None:
                 labels = {'HE', 'MA', 'EX', 'SE', 'OD'}
 
