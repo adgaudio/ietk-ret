@@ -22,21 +22,31 @@ import scipy.ndimage as ndi
 
 
 
-def affine_transform(im, size=(512,512)):
+def affine_transform(im, size=(512,512), **kws):
     """
     assume a square input image with any num of channels
-    rescale and crop to (512,512)
-    random flipping in x and y
-    random rotate -30 to 30 degrees
+    By default,
+        rescale and crop to (512,512)
+        random flipping in x and y
+        random rotate -30 to 30 degrees
+    Pass extra keyword args to change defaults;
+        rot=int, flip_y=bool, flip_x=bool
     """
     h, w, ch = im.shape
     M1 = get_scale_flip_matrix(
         h=h, w=w, scale_y=h/size[0], scale_x=w/size[1],
-        flip_y=np.random.randint(0,2)*2-1, flip_x=np.random.randint(0,2)*2-1)
+        flip_y=kws.get('flip_y', np.random.randint(0,2))*(-2)+1,
+        flip_x=kws.get('flip_x', np.random.randint(0,2))*(-2)+1)
     M2 = get_rotation_matrix(
-        rot_degrees=np.random.uniform(-30, 30), offset_h=size[0]/2, offset_w=size[0]/2)
+        rot_degrees=kws.get('rot', np.random.uniform(-30, 30)), offset_h=size[0]/2, offset_w=size[0]/2)
+    im, ma = im[:,:,:3], im[:,:,3:]
+    ch = 3
     z = ndi.affine_transform(
-        im, M1@M2, output_shape=(size[0], size[1], ch), prefilter=False, order=0)
+        im, M1@M2, output_shape=(size[0], size[1], ch), prefilter=True, order=3)
+    ch = ma.shape[-1]
+    z2 = ndi.affine_transform(
+        ma, M1@M2, output_shape=(size[0], size[1], ch), prefilter=False, order=0)
+    z = np.dstack([z,z2])
     return z
 
 
@@ -151,7 +161,7 @@ class BDSQualDR(api.FeedForwardModelConfig):
             raise NotImplementedError()
 
     __data_params = api.CmdlineOptions(
-        'data', {'name': 'qualdr',  # choices: idrid, rite, qualdr
+        'data', {'name': 'qualdr',  # choices: qualdr, (maybe messidor soon)
                  'use_train_set': True,  # otherwise use test set
                  'train_val_split': 0.8,  # use random 20% of train set as validation
                  })
@@ -164,11 +174,7 @@ class BDSQualDR(api.FeedForwardModelConfig):
     preprocess_mul255 = False  # whether to pass [0-1] normalized images or [0-255] (after clipping)
 
     def get_datasets(self):
-        # TODO: img transform on rite, idrid
-        # TODO: appropriate cropping and resizing on idrid and rite.
         return super().get_datasets({
-            'idrid': D.IDRiD_Segmentation(use_train_set=self.data_use_train_set),
-            'rite': D.RITE(use_train_set=self.data_use_train_set),
             #  'qualdr': D.QualDR(
                 #  default_set=self.train_or_test_str,
                 #  img_transform=qualdr_img_transform(self.ietk_method_name),),
