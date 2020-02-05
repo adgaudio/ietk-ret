@@ -13,7 +13,8 @@ def get_background(img, is_01_normalized=True):
 
 
 def get_foreground(img, is_01_normalized=True):
-    return center_crop_and_get_foreground_mask(img, False, is_01_normalized)[1]
+    return center_crop_and_get_foreground_mask(
+        img, crop=False, is_01_normalized=is_01_normalized)[1]
 
 
 def get_center_circle_coords(im, is_01_normalized: bool):
@@ -36,20 +37,31 @@ def get_center_circle_coords(im, is_01_normalized: bool):
     return x,y,r
 
 
-def center_crop_and_get_foreground_mask(im, crop=True, is_01_normalized=True, center_circle_coords=None):
+
+def get_foreground_mask_from_center_circle_coords(shape, x,y,r):
+    mask = np.zeros(shape, dtype='uint8')
+    cv2.circle(mask, (x, y), r, 255, cv2.FILLED)
+    mask = mask.astype(bool)
+    return mask
+
+
+def center_crop_and_get_foreground_mask(im, crop=True, is_01_normalized=True, center_circle_coords=None, label_img=None):
     if center_circle_coords is not None:
         x,y,r = center_circle_coords
     else:
         h, w, _ = im.shape
         x, y, r = get_center_circle_coords(im, is_01_normalized)
-    mask = np.zeros(im.shape[:2], dtype='uint8')
-    cv2.circle(mask, (x, y), r, 255, cv2.FILLED)
-    mask = mask.astype(bool)
+    mask = get_foreground_mask_from_center_circle_coords(im.shape[:2], x,y,r)
     if crop:
         crop_slice = np.s_[max(0, y-r):min(h,y+r),max(0,x-r):min(w,x+r)]
-        return im[crop_slice], mask[crop_slice]
-    else:
-        return im, mask
+        rv = [im[crop_slice], mask[crop_slice]]
+        if label_img is not None:
+            rv.append(label_img[crop_slice])
+    else:  # don't crop.  just get the mask.
+        rv = [im, mask]
+        if label_img is not None:
+            rv.append(label_img[crop_slice])
+    return rv
 
 
 def get_background_slow(img):
