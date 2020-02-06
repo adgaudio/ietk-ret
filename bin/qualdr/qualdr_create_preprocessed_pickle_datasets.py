@@ -10,13 +10,9 @@ import torchvision.transforms as tvt
 from functools import partial
 import os.path
 import multiprocessing as mp
-import re
-from matplotlib import pyplot as plt
-from PIL import Image
-import numpy as np
 import pickle
 
-from qualdr_grading import preprocess, pil_to_numpy
+from model_configs.shared_preprocessing import preprocess, pil_to_numpy
 
 
 def bap():
@@ -26,7 +22,7 @@ def bap():
     A('--methods', nargs='+',
       choices=list(ietk.methods.all_methods.keys()),
       default=['identity'])
-      #  default=list(ietk.methods.all_methods.keys()))
+      # default=list(ietk.methods.all_methods.keys()))
     A('--ok-if-exists', action='store_true')
     return par
 
@@ -41,7 +37,6 @@ def imtrans(method_name):
 
 def methods_by_name_and_set(ns):
     for method_name in ns.methods:
-        func = ietk.methods.all_methods[method_name]
         for default_set in ['train', 'test']:
             yield (method_name, default_set)
 
@@ -64,7 +59,7 @@ def gen_dataset(method_name, default_set):
             #  raise Exception('')
             dct = dset[n]
 
-            dct['image'] = dct['image'][0].permute(1,2,0).numpy()
+            dct['image'] = dct['image'][0].permute(1,2,0).numpy()*255
         #  for dct in dset:
         #      fp = re.sub('.*?arsn_qualdr/imgs[12]/', new_base_dir, dct['fp'])
             os.makedirs(os.path.dirname(fp), exist_ok=True)

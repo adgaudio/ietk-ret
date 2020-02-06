@@ -4,6 +4,10 @@ import ietk
 import torch
 
 
+def pil_to_numpy(pil_img):
+    return np.array(pil_img)
+
+
 def preprocess(img_mask_tensor, method_name,
                resize_to=(512, 512), crop_to_size=(512, 512),
                **affine_transform_kws):
@@ -107,7 +111,7 @@ def random_crop(im, size):
 
 
 def cutout_inplace(im4, pct_side=.2):
-    ch, h, w, ch = im4.shape
+    ch, h, w = im4.shape
     dy, dx = int(pct_side*h), int(pct_side*w)
     y = torch.randint(0, h-dy, (1,))
     x = torch.randint(0, w-dx, (1,))

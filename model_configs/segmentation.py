@@ -11,10 +11,11 @@ from screendr import datasets as D
 import ietk.util
 import ietk.methods
 from model_configs.qualdr_grading import eval_perf
-from .shared_preprocessing import preprocess
+from model_configs.shared_preprocessing import preprocess
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
+
 
 def get_train_val_idxs(dset_size, train_frac):
     """Generate index values for the training and validation sets."""
@@ -81,6 +82,7 @@ class BDSSegment(api.FeedForwardModelConfig):
         'model', {'name': 'unused',  # unused
                   'num_classes': -1  # unused
                   })
+
     def get_model(self):
         if self.model_name != 'unused':
             return super().get_model()
@@ -135,18 +137,18 @@ class BDSSegment(api.FeedForwardModelConfig):
         dsets = {}
         dsets.update(self._get_datasets(
             'idrid', IDRiD_Segmentation_PREPROCESSED(self.data_idrid_base_dir),
-            lambda x: x)) #D.IDRiD_Segmentation.as_tensor(return_numpy_array=True)))
+            lambda x: x))  # D.IDRiD_Segmentation.as_tensor(return_numpy_array=True)))
         dsets.update(self._get_datasets(
             'rite', D.RITE, D.RITE.as_tensor(['vessel'], return_numpy_array=True)))
         return super().get_datasets(dsets)
 
     data_loader_num_workers = int(torch.multiprocessing.cpu_count()/torch.cuda.device_count()-2)
+
     def get_data_loaders(self):
         kws = dict(
             batch_size=self.batch_size,
             pin_memory=True if self.data_name in ['rite'] else False,
-            num_workers=self.data_loader_num_workers,
-                   )
+            num_workers=self.data_loader_num_workers,)
         if not self.data_use_train_set:
             ldct = {
                 'test': torch.utils.data.DataLoader(
@@ -218,6 +220,7 @@ class BDSSegment(api.FeedForwardModelConfig):
 
     __checkpoint_params = api.CmdlineOptions(
         'checkpoint', {'fname': 'epoch_best.pth' })
+
     def save_checkpoint(self):
         if self._early_stopping.is_best_performing_epoch(self.cur_epoch):
             super().save_checkpoint(force_save=True)
@@ -235,6 +238,7 @@ class BDSSegment(api.FeedForwardModelConfig):
             self._early_stopping = checkpoint['_early_stopping']
 
     debug_visualize_preprocessing = False
+
     def run(self):
         if self.debug_visualize_preprocessing:
             from matplotlib import pyplot as plt
@@ -255,9 +259,9 @@ class BDSSegment(api.FeedForwardModelConfig):
                 eval_perf(self, 'test')
                 self.log_epoch('test')
 
+
 if __name__ == "__main__":
     #  main()
-
     from matplotlib import pyplot as plt
 
 
@@ -265,7 +269,7 @@ if __name__ == "__main__":
         dset = D.RITE(img_transform=None, getitem_transform=getitem_transforms(
             'val', 'identity',
             D.RITE.as_tensor(return_numpy_array=True)))
-        dset2 = D.RITE(img_transform=None, getitem_transform=None)
+        #  dset2 = D.RITE(img_transform=None, getitem_transform=None)
 
         #  dset = D.IDRiD_Segmentation(img_transform=None, getitem_transform=getitem_transforms(
             #  'val', 'identity',

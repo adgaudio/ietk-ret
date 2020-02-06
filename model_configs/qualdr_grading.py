@@ -6,20 +6,18 @@ import numpy as np
 import pandas as pd
 import time
 import torch.nn
-import torchvision as tv
 import torchvision.transforms as tvt
 
 from screendr import api
 from screendr import datasets as D
 from os.path import join
-
-log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+from model_configs.shared_preprocessing import preprocess, cutout_inplace
 
 import ietk.util
 import ietk.methods
-import scipy.ndimage as ndi
-from .shared_preprocessing import affine_transform, cutout_inplace
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 
 BestPerf = namedtuple('BestPerf', ['value', 'epoch'])
@@ -47,8 +45,20 @@ class BDSQualDR(api.FeedForwardModelConfig):
             join(self.base_dir, 'results', self.run_id, f'perf_matrices_{self.train_or_test_str}.h5'),
             header=self.get_loghdf_header())
 
+    debug_visualize_preprocessing = False
+
     def run(self):
-        if self.data_use_train_set:
+        if self.debug_visualize_preprocessing:
+            from matplotlib import pyplot as plt
+            plt.ion()
+            tt = 'train' if self.data_use_train_set else 'test'
+            for x,y in self.data_loaders._asdict()[f'{tt}']:
+                for i in range(x.shape[0]):
+                    plt.imshow(x[i].permute(1,2,0).numpy()) ; #plt.pause(0.4)
+                    plt.gcf().suptitle(self.ietk_method_name)
+                    plt.waitforbuttonpress()
+            import IPython ; IPython.embed() ; import sys ; sys.exit()
+        elif self.data_use_train_set:
             self.train()
         else:
             self.model.eval()
@@ -185,7 +195,6 @@ class BDSQualDR(api.FeedForwardModelConfig):
         #  super().log_mifnibatch({}, batch_idx=batch_idx)
         y = y.cpu()
         yhat = yhat.cpu()
-        batch_size = y.shape[0]
         if dloader is None:  # "train|test|val"
             dloader = self.train_or_test_str
 
@@ -204,7 +213,7 @@ class BDSQualDR(api.FeedForwardModelConfig):
             self.epoch_cache.streaming_mean(f'loss_{cat}_{dloader}', loss[i].item())
 
     def log_epoch(self, dloader='train'):
-        eld = extra_log_data = {}
+        eld = {}
 
         # first, recursively do logging on the validation set.  (future note: could disable by passing using_val_set=None)
         if dloader == 'train':
@@ -299,17 +308,15 @@ def eval_perf(config, dloader:str):
         config.log_minibatch(batch_idx, X, y, yhat, loss, dloader=dloader)
 
 
-def pil_to_numpy(pil_img):
-    return np.array(pil_img)
-
-
 def clip01(im):
     return im.clip(0, 1)
+
 
 def checknan(im):
     assert (~torch.isnan(im)).all()
     assert (~torch.isinf(im)).all()
     return im
+
 
 def qualdr_preprocessed_img_transform(config, train_or_test):
     if train_or_test == 'test':
@@ -317,6 +324,7 @@ def qualdr_preprocessed_img_transform(config, train_or_test):
         return tvt.Compose([
             partial(preprocess, method_name=config.ietk_method_name,
                     rot=0, flip_y=False, flip_x=False),
+            lambda im_mask: im_mask[0],
             lambda x: (x*255 if config.preprocess_mul255 else x),
             checknan,
         ])
@@ -324,6 +332,7 @@ def qualdr_preprocessed_img_transform(config, train_or_test):
         return tvt.Compose([
             partial(preprocess, method_name=config.ietk_method_name),
             lambda x: (x*255 if config.preprocess_mul255 else x),
+            lambda im_mask: im_mask[0],
             checknan,
             cutout_inplace,
             cutout_inplace,
@@ -340,12 +349,12 @@ if __name__ == "__main__":
     def testing():
         dset = D.QualDR(img_transform=None, getitem_transform=None)
 
-        dset2 = ietk.data.IDRiD('./data/IDRiD_segmentation')
+        #  dset2 = ietk.data.IDRiD('./data/IDRiD_segmentation')
         f, (ax1, ax2) = plt.subplots(1, 2)
         for id in torch.utils.data.RandomSampler(dset):
             dct = dset[id]
             im = np.array(dct['image'])
-            fp = dct['fp']
+            #  fp = dct['fp']
             print(im.shape)
 
             im2 = preprocess(im, 'identity')

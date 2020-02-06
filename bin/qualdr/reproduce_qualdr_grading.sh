@@ -96,13 +96,28 @@ models="A A2 B C C2 C3 D W X Y Z A+X C+X A+C A+Z A+C+X A+C+X+Z A+B sA+sB2 B+C B+
 # fix a bug where validation set was evaluated with cutout.
 # run all models with the same early stopping.
 # good enough for final results now.
+# (
+# for mdl in $models ; do
+  # echo Q2-$mdl python -m screendr model_configs BDSQualDR \
+    # --ietk-method-name $mdl --epochs 120 --checkpoint-fname 'epoch_best.pth'
+# done
+# for mdl in $models ; do
+  # echo Qtest2-$mdl python -m screendr model_configs BDSQualDR \
+    # --ietk-method-name $mdl \
+    # --checkpoint-fp ./data/results/Q2-$mdl/model_checkpoints/epoch_best.pth \
+    # --no-data-use-train-set
+# done
+# ) | run_gpus
+
+# now try running on 512x512 images (so the pre-processing happens on the fly)
+# also fixed a bug with sharpen putting out nans.
 (
 for mdl in $models ; do
-  echo Q2-$mdl python -m screendr model_configs BDSQualDR \
+  echo Q3-$mdl python -m screendr model_configs BDSQualDR \
     --ietk-method-name $mdl --epochs 120 --checkpoint-fname 'epoch_best.pth'
 done
 for mdl in $models ; do
-  echo Qtest2-$mdl python -m screendr model_configs BDSQualDR \
+  echo Qtest3-$mdl python -m screendr model_configs BDSQualDR \
     --ietk-method-name $mdl \
     --checkpoint-fp ./data/results/Q2-$mdl/model_checkpoints/epoch_best.pth \
     --no-data-use-train-set
