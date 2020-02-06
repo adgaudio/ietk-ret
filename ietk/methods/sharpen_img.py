@@ -34,7 +34,7 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
         image with 10x10 kernel. For enhancing fine details in large images.
     use_guidedfilter - a bool or the string 'if_large_img' determining whether
         to clean up the resulting sharpened image.  If the min image dimension is
-        less that 1000, this cleanup operation will significantly blur the
+        less that 1500, this cleanup operation may blur the
         image, ruining its quality.
     """
     if bg is None:
@@ -75,7 +75,7 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
     # problematic to the image quality, significantly blurring it.
     if use_guidedfilter == 'if_large_img':
         # note: at some point, find a better threshold?  This works.
-        use_guidedfilter = min(J.shape[0], J.shape[1]) > 1400
+        use_guidedfilter = min(J.shape[0], J.shape[1]) >= 1500
     if not use_guidedfilter:
         J = check_and_fix_nan(J, img)
         return J
