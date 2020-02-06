@@ -142,7 +142,10 @@ class BDSSegment(api.FeedForwardModelConfig):
             'rite', D.RITE, D.RITE.as_tensor(['vessel'], return_numpy_array=True)))
         return super().get_datasets(dsets)
 
-    data_loader_num_workers = int(torch.multiprocessing.cpu_count()/torch.cuda.device_count()-2)
+    if torch.cuda.device_count():
+        data_loader_num_workers = int(torch.multiprocessing.cpu_count()/torch.cuda.device_count()-3)
+    else:
+        data_loader_num_workers = int(torch.multiprocessing.cpu_count())-3
 
     def get_data_loaders(self):
         kws = dict(

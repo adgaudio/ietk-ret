@@ -135,7 +135,10 @@ class BDSQualDR(api.FeedForwardModelConfig):
         })
 
     debug_small_dataset = 0  # set to num of imgs in the debugging set.
-    data_loader_num_workers = int(torch.multiprocessing.cpu_count()/torch.cuda.device_count()-3)
+    if torch.cuda.device_count():
+        data_loader_num_workers = int(torch.multiprocessing.cpu_count()/torch.cuda.device_count()-3)
+    else:
+        data_loader_num_workers = int(torch.multiprocessing.cpu_count())-3
 
     def get_data_loaders(self):
         assert self.data_name == 'qualdr'
