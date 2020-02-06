@@ -55,9 +55,14 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
     if t == 'laplace':
         t = 1-util.norm01(sharpen(ndi.morphological_laplace(
             img, (2,2,1), mode='wrap'), bg, 0.15), bg)
-        #  note: if laplace is all zeros (due to bad input img), t will be all nan.
         #  t = 1-util.norm01(ndi.morphological_laplace(
             #  img, (2,2,1), mode='wrap'), bg)
+
+        # todo note: laplace t is 01 normalized.  should we keep the max
+        # and just normalize the lower range (or vice versa or something)?
+
+        # note2: if laplace is all zeros (due to bad input img), t will be all nan.
+
 
     if len(np.shape(t)) + 1 == len(img.shape):
         t_refined = np.expand_dims(t, -1).astype('float')
@@ -106,13 +111,18 @@ if __name__ == "__main__":
 
     J = sharpen(img, bg, .15)
     J_nogf = sharpen(img, bg, .15, use_guidedfilter=False)
+    J_laplace = sharpen(img, bg)
 
-    f, axs = plt.subplots(1, 2, figsize=(15, 5))
-    #  f, axs = plt.subplots(1, 3, figsize=(15, 5))
+    #  f, axs = plt.subplots(1, 2, figsize=(15, 5))
+    f, axs = plt.subplots(1, 3, figsize=(15, 5))
     axs[0].imshow(img)
     axs[0].set_title('Unmodified image')
     axs[1].imshow(J)
-    axs[1].set_title('Sharpened')
+    axs[1].set_title('Sharpened, Algo. 1')
+    #  axs[2].imshow(J_nogf)
+    #  axs[2].set_title('Sharpened without guided filter')
+    axs[2].imshow(J_laplace)
+    axs[2].set_title('Sharpened, Algo. 2')
     #  axs[2].imshow(J_nogf)
     #  axs[2].set_title('Sharpened without guided filter')
     [ax.axis('off') for ax in axs]
