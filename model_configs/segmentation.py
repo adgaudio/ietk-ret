@@ -10,8 +10,8 @@ from screendr import datasets as D
 
 import ietk.util
 import ietk.methods
-from model_configs.qualdr_grading import (
-    affine_transform, random_crop, eval_perf)
+from model_configs.qualdr_grading import eval_perf
+from .shared_preprocessing import preprocess
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -21,42 +21,6 @@ def get_train_val_idxs(dset_size, train_frac):
     tr_size = int(dset_size * train_frac)
     idx_shuffled = torch.randperm(dset_size).tolist()
     return idx_shuffled[:tr_size], idx_shuffled[tr_size:]
-
-
-def preprocess(img_mask_tensor, method_name,
-               resize_to=(512, 512), crop_to_size=(512, 512),
-               **affine_transform_kws):
-    """
-    For retinal fundus images.
-    center crop, resize to 1600x1600, randomly rotate +-30degrees and flip ud
-    and lr.  Return the image and a focus region mask.
-
-    input_img can have any number of channels.  Useful for semantic
-    segmentation if you wish to stack the image and label masks together and
-    then apply transforms.
-
-    Assume input_img is [0,255] normalized np.array
-    """
-    im = img_mask_tensor[:,:,:3]
-    label_mask = img_mask_tensor[:,:,3:]
-    h, w, ch = im.shape
-    # --> get forground and center crop to minimize background
-    im, fg, label_mask = ietk.util.center_crop_and_get_foreground_mask(
-        im, is_01_normalized=False, label_img=label_mask)
-    # --> enhance via ietk method A+B+X or whatever
-    im = ietk.methods.all_methods[method_name](im/255, focus_region=fg)
-    im = im.clip(0,1) * 255
-    # --> affine transform
-    stack = np.dstack([im, label_mask])
-    stack = affine_transform(stack, size=resize_to, **affine_transform_kws)
-    # --> random crop
-    if resize_to != crop_to_size:
-        stack = random_crop(stack, crop_to_size)
-    # --> undo the stack and restore proper types, normalized in [0,1]
-    im, label_mask = (stack[:,:,:ch]/255).astype('float32'), stack[:,:,ch:].astype(bool)
-    im = torch.tensor(im, dtype=torch.float32).permute(2,0,1)
-    label_mask = torch.tensor(label_mask, dtype=torch.float32).permute(2,0,1)
-    return im, label_mask
 
 
 def getitem_transforms(train_val_test: str, ietk_method_name: str,

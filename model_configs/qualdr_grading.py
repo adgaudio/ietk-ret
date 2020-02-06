@@ -19,75 +19,7 @@ log.setLevel(logging.INFO)
 import ietk.util
 import ietk.methods
 import scipy.ndimage as ndi
-
-
-
-def affine_transform(im, size=(512,512), **kws):
-    """
-    assume a square input image with any num of channels
-    By default,
-        rescale and crop to (512,512)
-        random flipping in x and y
-        random rotate -30 to 30 degrees
-    Pass extra keyword args to change defaults;
-        rot=int, flip_y=bool, flip_x=bool
-    """
-    h, w, ch = im.shape
-    M1 = get_scale_flip_matrix(
-        h=h, w=w, scale_y=h/size[0], scale_x=w/size[1],
-        flip_y=kws.get('flip_y', np.random.randint(0,2))*(-2)+1,
-        flip_x=kws.get('flip_x', np.random.randint(0,2))*(-2)+1)
-    M2 = get_rotation_matrix(
-        rot_degrees=kws.get('rot', np.random.uniform(-30, 30)), offset_h=size[0]/2, offset_w=size[0]/2)
-    im, ma = im[:,:,:3], im[:,:,3:]
-    ch = 3
-    z = ndi.affine_transform(
-        im, M1@M2, output_shape=(size[0], size[1], ch), prefilter=True, order=3)
-    ch = ma.shape[-1]
-    z2 = ndi.affine_transform(
-        ma, M1@M2, output_shape=(size[0], size[1], ch), prefilter=False, order=0)
-    z = np.dstack([z,z2])
-    return z
-
-
-def get_scale_flip_matrix(h, w, scale_y, scale_x, flip_y, flip_x):
-    M = np.array([
-        [flip_y * scale_y, 0, 0, w if flip_y==-1 else 0],
-        [0, flip_x * scale_x, 0, h if flip_x==-1 else 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1],
-    ])
-    return M
-
-
-def get_rotation_matrix(rot_degrees, offset_h, offset_w):
-    ang = rot_degrees * np.pi/180
-    M_to_center = np.array([
-        [1,0,0,offset_h],
-        [0,1,0,offset_w],
-        [0,0,1,0],
-        [0,0,0,1] ])
-    M = np.array([
-        [np.cos(ang), -1.0*np.sin(ang), 0, 0],
-        [np.sin(ang), np.cos(ang), 0, 0],
-        [0, 0, 1, 0],
-        [0,0,0,1]
-        ])
-    M_from_center = np.array([
-        [1,0,0,-offset_h],
-        [0,1,0,-offset_w],
-        [0,0,1,0],
-        [0,0,0,1] ])
-    return M_to_center@M@M_from_center
-
-
-def cutout_inplace(im4, pct_side=.2):
-    h, w, ch = im4.shape
-    dy, dx = int(pct_side*h), int(pct_side*w)
-    y = np.random.randint(0, h-dy)
-    x = np.random.randint(0, w-dx)
-    im4[y:min(h,y+dy),x:min(w,x+dx)] = 0
-    return im4
+from .shared_preprocessing import affine_transform, cutout_inplace
 
 
 BestPerf = namedtuple('BestPerf', ['value', 'epoch'])
@@ -179,13 +111,13 @@ class BDSQualDR(api.FeedForwardModelConfig):
                 #  default_set=self.train_or_test_str,
                 #  img_transform=qualdr_img_transform(self.ietk_method_name),),
             'qualdr': D.PickledDicts(
-                f'./data/preprocessed/arsn_qualdr-ietk-{self.ietk_method_name}/{self.train_or_test_str}',
+                f'./data/preprocessed/arsn_qualdr-ietk-identity/{self.train_or_test_str}',
                 img_transform=qualdr_preprocessed_img_transform(self, self.train_or_test_str),
                 getitem_transform=lambda x: (
                     x['image'], D.QualDR_Grading.get_diagnosis_grades(x['json'])),
                  ),
             'qualdr_no_cutout': D.PickledDicts(
-                f'./data/preprocessed/arsn_qualdr-ietk-{self.ietk_method_name}/{self.train_or_test_str}',
+                f'./data/preprocessed/arsn_qualdr-ietk-identity/{self.train_or_test_str}',
                 img_transform=qualdr_preprocessed_img_transform(self, 'test'),
                 getitem_transform=lambda x: (
                     x['image'], D.QualDR_Grading.get_diagnosis_grades(x['json'])),
@@ -371,95 +303,32 @@ def pil_to_numpy(pil_img):
     return np.array(pil_img)
 
 
-def preprocess(input_img, method_name, resize_to=(512, 512), crop_to_size=(512, 512)):
-    """
-    For retinal fundus images.
-    center crop, resize to 1600x1600, randomly rotate +-30degrees and flip ud
-    and lr.  Return the image and a focus region mask.
-
-    input_img can have any number of channels.  Useful for semantic
-    segmentation if you wish to stack the image and label masks together and
-    then apply transforms.
-    """
-    im = input_img
-    im, fg = ietk.util.center_crop_and_get_foreground_mask(im)
-    im = enhance_via_ietk(im/255, fg, method_name)*255
-    ch = im.shape[-1]
-    imb = im
-    im = affine_transform(np.dstack([im, fg]).astype('float').copy(), resize_to)
-    im = random_crop(im, crop_to_size)
-    im, fg = im[:,:,:ch], im[:,:,ch:].astype(bool)
-    im = im/255
-    return im.astype('float32')
-
-
-def random_crop(im, size):
-    y = np.random.randint(0, im.shape[0]-size[0]+1)
-    x = np.random.randint(0, im.shape[1]-size[1]+1)
-    return im[y:y+size[0],x:x+size[0]]
-
-
-def enhance_via_ietk(im, focus_region, method_name):
-    """Run an ietk enhancement method (brighten darken and/or sharpen) using
-    given focus region and a [0,1] normalized image.
-
-    Apply only to image, not to labels
-    input is a tuple: (img, focus_region)
-    """
-    if method_name.lower() == 'none':
-        return im.astype('float32')
-    else:
-        assert method_name in ietk.methods.all_methods
-    im2 = ietk.methods.all_methods[method_name](im, focus_region.squeeze())
-    return im2
-
-
-def qualdr_img_transform(method_name, **kw):
-    #  # for testing.
-    #  pipe = tvt.Compose([
-    #      #  pil_to_numpy,
-    #      #  partial(preprocess, crop_to_size=(256,256), include_focus_region=False),
-    #      tvt.CenterCrop((512, 512)),
-    #      tvt.ToTensor()])
-    #  return pipe
-    pipe = tvt.Compose([
-    pil_to_numpy,
-    partial(preprocess, method_name=method_name, **kw),
-    cutout_inplace,
-    cutout_inplace,
-    cutout_inplace,
-    tvt.ToTensor()])
-    return pipe
-
-
 def clip01(im):
     return im.clip(0, 1)
 
-def nantozero_inplace(im):
-    im[np.isnan(im)] = 0  # caused by the guided filter blur function in sharpen of ietk when there are large values.
-    assert (~np.isnan(im)).all()
-    assert (~np.isinf(im)).all()
+def checknan(im):
+    assert (~torch.isnan(im)).all()
+    assert (~torch.isinf(im)).all()
     return im
 
 def qualdr_preprocessed_img_transform(config, train_or_test):
     if train_or_test == 'test':
         # don't apply cutout to test set.
         return tvt.Compose([
-            affine_transform,
-            clip01 if config.preprocess_clip_imgs else (lambda passthrough: passthrough),
+            partial(preprocess, method_name=config.ietk_method_name,
+                    rot=0, flip_y=False, flip_x=False),
             lambda x: (x*255 if config.preprocess_mul255 else x),
-            nantozero_inplace,
-            tvt.ToTensor()])
+            checknan,
+        ])
     else:
         return tvt.Compose([
-            affine_transform,
-            cutout_inplace,
-            cutout_inplace,
-            cutout_inplace,
-            clip01 if config.preprocess_clip_imgs else (lambda passthrough: passthrough),
+            partial(preprocess, method_name=config.ietk_method_name),
             lambda x: (x*255 if config.preprocess_mul255 else x),
-            nantozero_inplace,
-            tvt.ToTensor()])
+            checknan,
+            cutout_inplace,
+            cutout_inplace,
+            cutout_inplace,
+        ])
 
 
 if __name__ == "__main__":

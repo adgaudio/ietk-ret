@@ -25,7 +25,8 @@ def bap():
     A('--save_dir', default='./data/arsn_preprocess/')
     A('--methods', nargs='+',
       choices=list(ietk.methods.all_methods.keys()),
-      default=list(ietk.methods.all_methods.keys()))
+      default=['identity'])
+      #  default=list(ietk.methods.all_methods.keys()))
     A('--ok-if-exists', action='store_true')
     return par
 
@@ -33,7 +34,9 @@ def bap():
 def imtrans(method_name):
     return tvt.Compose([
         pil_to_numpy,
-        partial(preprocess, method_name=method_name)])
+        partial(preprocess, method_name=method_name,
+                rot=0, flip_y=False, flip_x=False),
+    ])
 
 
 def methods_by_name_and_set(ns):
@@ -60,6 +63,8 @@ def gen_dataset(method_name, default_set):
                 continue
             #  raise Exception('')
             dct = dset[n]
+
+            dct['image'] = dct['image'][0].permute(1,2,0).numpy()
         #  for dct in dset:
         #      fp = re.sub('.*?arsn_qualdr/imgs[12]/', new_base_dir, dct['fp'])
             os.makedirs(os.path.dirname(fp), exist_ok=True)
