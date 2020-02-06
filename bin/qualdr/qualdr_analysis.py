@@ -3,18 +3,10 @@
 ./bin/qualdr_analysis.py --ns 'Qtest2'
 """
 from matplotlib import pyplot as plt
-import numpy as np
 import os
-import pandas as pd
 import re
-import scipy.stats
-import seaborn as sns
 
-from screendr.plot_perf import _mode1_get_frames, bap
-
-
-def parse_run_id(run_id):
-    return re.match(r'Qtest[\d\.]+-(.*)$', run_id).group(1)
+import model_configs.shared_plotting as SP
 
 
 def main(ns):
@@ -22,19 +14,16 @@ def main(ns):
 
 
 if __name__ == "__main__":
-    NS = bap().parse_args()
-    print(NS)
-    main(NS)
+    #  NS = bap().parse_args()
+    #  print(NS)
+    #  main(NS)
+    #  ns = NS
 
-    ns = NS
-
-    base_dir = f'{ns.data_dir}/plots/qualdr'
+    base_dir = './data/plots/qualdr'
     os.makedirs(base_dir, exist_ok=True)
-    dfs = {(run_id, parse_run_id(run_id)): tmpdf
-           for (run_id, _), tmpdf in _mode1_get_frames(ns)}
-    print(dfs.keys())
-    cdfs = pd.concat(dfs, sort=False, names=['run_id', 'Method'])
 
+    cdfs = SP.get_qualdr_test_df()
+    print(cdfs.head(2))
     cdfs.sort_index(level='Method', inplace=True)
     cols = [x for x in cdfs.columns if 'MCC_hard' in x]
 
@@ -94,34 +83,6 @@ if __name__ == "__main__":
 
     #  hdf = pd.HDFStore('data/results/Q1-A/perf_matrices_train.h5')
 
-    ##
-    ### Correlation to separability score -- cross dataset comparison
-    ##
-    _sep = pd.read_csv('data/histograms_idrid_data/separability_consistency/separability.csv')\
-        .query('lesion_name!="OD"')\
-        .groupby(['method_name', 'lesion_name'])[['red', 'green', 'blue']]\
-        .mean().stack().groupby('method_name').mean().rename('Averaged Separability (IDRiD)')
-    _sep.index.rename('Method', inplace=True)
-    _sep2 = cdfs[cols].groupby('Method').mean()
-
-    _sep2.columns = [re.sub('MCC_hard_(.*?)_test', r'\1', x)
-                     for x in _sep2.columns]
-    _sep2.index = [f'avg{x.count("+")}:{x}' if '+' in x else x for x in _sep2.index]
-    sep = _sep2.join(_sep)
-
-    fig, axs = plt.subplots(1, 3, sharex=True, sharey=True)
-    legend_labels = []
-    for ax, col in zip(axs, sep.columns):
-        sns.regplot('Averaged Separability (IDRiD)', col, sep, ax=ax)
-        ax.set_ylabel('')
-        ax.set_title(col.capitalize())
-        ax.set_xlabel('')
-        a,b = sep[[col, 'Averaged Separability (IDRiD)']].dropna().T.values
-        rv = scipy.stats.linregress(b,a)
-        ax.legend([f'$R^2$ = {np.round(rv[2], 2)}'])
-    axs[0].set_ylabel('MCC (QualDR Test)')
-    axs[1].set_xlabel('Avg. Lesion Separability Score (IDRiD Train)')
-    fig.savefig(f'{base_dir}/correlation_sep_mcc.png')
     # conclusions:
     # - suggests better color separation does improve model performance.
     # - but something other color separation is also important for retinopathy grading.

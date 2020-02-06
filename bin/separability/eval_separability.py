@@ -70,7 +70,7 @@ if __name__ == "__main__":
         fps = [x for x in fps if not any(x.endswith(f'-{y}.npz') for y in ('A2', 'sA+sB2', 'C2', 'C3'))]
 
         df = get_separability_scores(fps, bool(is_3d))
-        df['method_name'] = df['method_name'].apply(lambda x: 'avg%s:%s' % (x.count('+'), x) if '+' in x else x)
+        df['method_name'] = df['method_name'].apply(lambda x: 'avg%s:%s' % (x.count('+')+1, x) if '+' in x else x)
         df.to_csv(save_csv_fp)
 
         print('separability plots')
