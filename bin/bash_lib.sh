@@ -204,8 +204,8 @@ export -f round_robbin_gpu
 
 function run_gpus() {
   # use redis database as a queuing mechanism.  you can specify how to connect to redis with RUN_GPUS_REDIS_CLI 
-  local num_gpus=$(nvidia-smi pmon -c 1|grep -v \# | awk '{print $1}' | sort -u | wc -l)
   local redis="${RUN_GPUS_REDIS_CLI:-redis-cli -n 1}"
+  local num_gpus=$(nvidia-smi pmon -c 1|grep -v \# | awk '{print $1}' | sort -u | wc -l)
   local Q="`mktemp -u -p run_gpus`"
 
   trap "$(echo $redis DEL "$Q" "$Q/numstarted") > /dev/null" EXIT
@@ -213,7 +213,7 @@ function run_gpus() {
   # --> publish to the redis queue
   local maxjobs=0
   while read -r line0 ; do
-    $redis RPUSH "$Q" "$line0" >/dev/null
+    $redis LPUSH "$Q" "$line0" >/dev/null
     local maxjobs=$(( $maxjobs + 1 ))
   done
   $redis EXPIRE "$Q" 1209600 >/dev/null # expire queue after two weeks in case trap fails. should make all the rpush events and this expire atomic, but oh well.
