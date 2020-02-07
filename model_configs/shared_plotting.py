@@ -29,22 +29,34 @@ def get_perf_csvs_as_df(runid_regex):
 
 
 def get_qualdr_test_df(just_mcc_test_cols=False):
-    df = get_perf_csvs_as_df('Qtest2')  # TODO: replace with 3
+    df = get_perf_csvs_as_df('Qtest3')
     if just_mcc_test_cols:
         print(df.columns)
         cols = [x for x in df.columns if x.endswith('_test') and x.startswith('MCC_hard')]
         df = df[cols]
-        df.columns = [re.sub('MCC_hard_(.*?)_test', r'\1', x) for x in df.columns]
+        df.columns = [
+            re.sub('MCC_hard_(.*?)_test', r'\1', x)
+            for x in df.columns]  # [retinopathy, maculopathy, photocoagulation]
+        df = df.replace({'retinopathy': 'DR', 'maculopathy': 'MD', 'photocoagulation': 'PC'})
     return df
 
 
-def get_idrid_test_df():
-    return get_perf_csvs_as_df('Itest1')
+def _get_segmentation_test_df(runid_regex, just_mcc_test_cols):
+    df = get_perf_csvs_as_df(runid_regex)
+    if just_dice_test_cols:
+        cols = [x for x in df.columns if x.endswith('_test') and x.startswith('Dice_') and x!='Dice_test']
+        df = df[cols]
+        df.columns = [
+            re.sub('Dice_(.*?)_test', r'\1', x)
+            for x in df.columns]  # [MA, HE, ...]
 
 
-def get_rite_test_df():
-    return get_perf_csvs_as_df('Rtest1')
+def get_idrid_test_df(just_dice_test_cols=False):
+    return _get_segmentation_test_df('Itest2', just_dice_test_cols)
 
+
+def get_rite_test_df(just_dice_test_cols=False):
+    return _get_segmentation_test_df('Rtest2', just_dice_test_cols)
 
 
 def get_separability_scores():
@@ -62,3 +74,17 @@ def correlation_plot(col1: str, col2: str, df, ax):
     a,b = df[[col2, col1]].dropna().T.values
     pearson = scipy.stats.pearsonr(a,b)
     ax.legend([f'$R={np.round(pearson[0], 2)}$\n$p={np.round(pearson[1], 3)}$'], loc='lower right')
+
+
+def report_topn_models(cdfs, N, new_metric_col_name):
+    z = cdfs.groupby('Method').mean()
+    z2 = (z - z.loc['identity'].values)
+    top_models = z.stack().groupby(level=1).nlargest(N).reset_index(level=0, drop=True).rename(new_metric_col_name)
+    tm = top_models = top_models.to_frame().join(
+        z2.stack().groupby(level=1).nlargest(N)
+        .reset_index(level=0, drop=True).rename('(delta)')
+    ).reset_index()
+    tm['Task'] = tm.reset_index()['level_1'].values
+    table = tm.set_index(['Task', 'Method']).apply(lambda x: '%0.3f (%0.3f)' % (x[new_metric_col_name], x['(delta)']), axis=1).rename(f'{new_metric_col_name} (delta)').reset_index()
+    table = table.set_index(['Task', 'Method'])
+    return table

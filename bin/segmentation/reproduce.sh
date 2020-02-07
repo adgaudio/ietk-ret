@@ -19,8 +19,7 @@ pwd
 # your experiments here, identified by name.  The results show up in ./data/results/test_my_run_id and ./data/results/test_my_other_experiment
 
 
-# using a subset of models from 
-models="A A2 B C C2 C3 D W X Y Z A+X C+X A+C A+Z A+C+X A+C+X+Z A+B B+C B+X A+B+C A+B+X B+C+X A+B+C+X A+B+C+W+X sA+sX sC+sX sA+sC sA+sZ sA+sC+sX sA+sC+sX+sZ sA+sB sB+sC sB+sX sA+sB+sC sA+sB+sX sB+sC+sX sA+sB+sC+sX sA+sB+sC+sW+sX identity"
+models="identity A A2 B C C2 C3 D W X Y Z A+X C+X A+C A+Z A+C+X A+C+X+Z A+B B+C B+X A+B+C A+B+X B+C+X A+B+C+X A+B+C+W+X sA+sX sC+sX sA+sC sA+sZ sA+sC+sX sA+sC+sX+sZ sA+sB sB+sC sB+sX sA+sB+sC sA+sB+sX sB+sC+sX sA+sB+sC+sX sA+sB+sC+sW+sX"
 (
 # for mdl in $models ; do
 #   echo R1-$mdl python -m screendr model_configs BDSSegment \
@@ -31,23 +30,47 @@ models="A A2 B C C2 C3 D W X Y Z A+X C+X A+C A+Z A+C+X A+C+X+Z A+B B+C B+X A+B+C
 
 # fix bug in sharpen that it doesn't work for small imgs.
 # fix bugs in preprocessing steps
+# for mdl in $models ; do
+#   echo I1-$mdl python -m screendr model_configs BDSSegment \
+#     --data-name idrid --ietk-method-name $mdl \
+#     --epochs 100 \
+#     --checkpoint-fname 'epoch_best.pth'
+# done
+# for mdl in $models ; do
+#   echo R1.3-$mdl python -m screendr model_configs BDSSegment \
+#     --data-name rite --ietk-method-name $mdl \
+#     --epochs 80 \
+#     --checkpoint-fname 'epoch_best.pth'
+# done
+
+# okay now train on train set and evaluate test set.
 for mdl in $models ; do
-  echo I1-$mdl python -m screendr model_configs BDSSegment \
+  echo I2-$mdl python -m screendr model_configs BDSSegment \
     --data-name idrid --ietk-method-name $mdl \
     --epochs 100 \
-    --checkpoint-fname 'epoch_best.pth'
-done
-for mdl in $models ; do
-  echo R1.3-$mdl python -m screendr model_configs BDSSegment \
+    --checkpoint-fname 'epoch_best.pth' \
+    --data-train-val-split 1
+  echo R2-$mdl python -m screendr model_configs BDSSegment \
     --data-name rite --ietk-method-name $mdl \
     --epochs 80 \
-    --checkpoint-fname 'epoch_best.pth'
+    --checkpoint-fname 'epoch_best.pth'\
+    --data-train-val-split 1
 done
-# for mdl in $models ; do
-  # echo Qtest2-$mdl python -m screendr model_configs BDSQualDR \
-    # --ietk-method-name $mdl \
-    # --no-data-use-train-set
-# done
+
+for mdl in $models ; do
+  echo Itest2-$mdl python -m screendr model_configs BDSSegment \
+    --data-name idrid --ietk-method-name $mdl \
+    --epochs 100 \
+    --checkpoint-fp ./data/results/I2-$mdl/model_checkpoints/epoch_best.pth \
+    --no-data-use-train-set
+done
+for mdl in $models ; do
+  echo Rtest2-$mdl python -m screendr model_configs BDSSegment \
+    --data-name rite --ietk-method-name $mdl \
+    --epochs 100 \
+    --checkpoint-fp ./data/results/R2-$mdl/model_checkpoints/epoch_best.pth \
+    --no-data-use-train-set
+done
 ) | run_gpus
 
 # when testing, set this to 1:

@@ -9,27 +9,47 @@ from model_configs import shared_plotting as SP
 base_dir = './data/plots/joint_analysis'
 os.makedirs(base_dir, exist_ok=True)
 
+# load the performance data
+sep = SP.get_separability_scores()
+qualdr = SP.get_qualdr_test_df(True)
+idrid = SP.get_idrid_test_df(True)
+rite = SP.get_rite_test_df(True)
 
-# Correlation between dice and mcc.
+# Top N tables
+N = 1
+def save_table(df, fp):
+    table = SP.report_topn_models(df, N)
+    print(table.to_string())
+    table.reset_index().to_latex(
+        f'{base_dir}/qualdr_mcc_top_models.tex',
+        index=False, multirow=True, column_format='|lll')
+save_table(qualdr, f'{base_dir}/qualdr_top_models.tex', 'MCC')
+save_table(idrid, f'{base_dir}/idrid_top_models.tex', 'Dice')
+save_table(rite, f'{base_dir}/rite_top_models.tex', 'Dice')
+
+# Correlation between dice and mcc on test set.
 #  left: idrid, right: rite.  show scatter plot with correlation coefficient.
 #  'paper/figures/mcc_vs_dice.png'
 
 
 # Correlations between separability and respective task score.
-sep = SP.get_separability_scores()
-qualdr = SP.get_qualdr_test_df(True)
-#  idrid = SP.get_idrid_test_df()
-#  rite = SP.get_rite_test_df()
+def corr_catplot(df, xlabel='MCC (QualDR Test)'):
+    # scatter plot for first N-1 columns against the Nth column
+    Ncol = len(df.columns)-1
+    fig, axs = plt.subplots(1, Ncol, sharex=True, sharey=True)
+    last_col = df.columns[-1]
+    for ax, col in zip(axs, qd2.columns):
+        SP.correlation_plot(col, last_col, df, ax=ax)
+    [ax.set_ylabel('') for ax in axs.ravel()[1:]]
+    [ax.set_xlabel('') for ax in axs.ravel()]
+    axs[int(Ncol//2)].set_xlabel(xlabel)
+    return fig
+for xlabel, tdf in [('MCC (QualDR Test)', qualdr),
+            ('Dice (IDRiD Test)', idrid),
+            ('Dice (RITE Test)', rite)]:
+    corr_catplot(tdf.join(sep, how='outer'), xlabel)\
+            .savefig(f'{base_dir}/correlation_sep_vs_{xlabel.lower().replace(" ","_")}.png')
 
-
-fig, axs = plt.subplots(1, 3, sharex=True, sharey=True)
-tmp = qualdr.join(sep, how='outer')
-for ax, col in zip(axs, qualdr.columns):
-    SP.correlation_plot(col, 'Averaged Separability (IDRiD)', tmp, ax=ax)
-[ax.set_ylabel('') for ax in axs[1:]]
-[ax.set_xlabel('') for ax in axs]
-axs[1].set_xlabel('MCC (QualDR Test)')
-fig.savefig(f'{base_dir}/correlation_sep_mcc_qualdr.png')
 
 
 #  fig, axs = plt.subplots(2, 4, sharex=True, sharey=True)

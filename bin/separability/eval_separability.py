@@ -115,4 +115,5 @@ if __name__ == "__main__":
         # the proper separability score, as defined in paper, excluding OD
         z = df2.query('Lesion != "OD"').groupby(['Method']).mean()
         z.nlargest(15, 'Separability score').append(z.loc['identity'])\
-            .to_latex(join(save_img_dir, f'top15-separability.tex'))
+                .reset_index()\
+                .to_latex(join(save_img_dir, f'top15-separability.tex'), index=False)

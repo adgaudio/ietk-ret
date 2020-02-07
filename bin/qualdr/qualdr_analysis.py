@@ -2,9 +2,7 @@
 """
 ./bin/qualdr_analysis.py --ns 'Qtest2'
 """
-from matplotlib import pyplot as plt
 import os
-import re
 
 import model_configs.shared_plotting as SP
 
@@ -27,7 +25,7 @@ if __name__ == "__main__":
     cdfs.sort_index(level='Method', inplace=True)
     cols = [x for x in cdfs.columns if 'MCC_hard' in x]
 
-    # print the best performing models.
+    # print the best performing models as bar plot
     z = cdfs.groupby('Method').mean()
     z2 = (z - z.loc['identity'].values)
     # --> plot all models
@@ -37,18 +35,6 @@ if __name__ == "__main__":
     ax.set_xlabel('Preprocessing Method')
     ax.figure.tight_layout()
     ax.figure.savefig(f'{base_dir}/qualdr_mcc_top_models.png')
-    # --> report the top 3 models
-    N = 3
-    top_models = z[cols].stack().groupby(level=1).nlargest(N).reset_index(level=0, drop=True).rename('MCC')
-    tm = top_models = top_models.to_frame().join(
-        z2[cols].stack().groupby(level=1).nlargest(N)
-        .reset_index(level=0, drop=True).rename('(delta)')
-    ).reset_index()
-    tm['Category'] = tm.reset_index()['level_1'].replace(regex={'MCC_hard_(.*)_test': r'\1'}).values
-    table = tm.set_index(['Category', 'Method']).apply(lambda x: '%0.3f (%0.3f)' % (x['MCC'], x['(delta)']), axis=1).rename('MCC (delta)').reset_index()
-    table = table.replace({'retinopathy': 'DR', 'maculopathy': 'MD', 'photocoagulation': 'PC'}).set_index(['Category', 'Method'])
-    print(table.to_string())
-    table.to_latex(f'{base_dir}/qualdr_mcc_top_models.tex', multirow=True, column_format='|lll')
 
     # correlate these to the validation scores.
     # TODO
@@ -83,16 +69,6 @@ if __name__ == "__main__":
 
     #  hdf = pd.HDFStore('data/results/Q1-A/perf_matrices_train.h5')
 
-    # conclusions:
-    # - suggests better color separation does improve model performance.
-    # - but something other color separation is also important for retinopathy grading.
-    # - the preprocessing does make the task easier, rather than regularize it.
-    # - the pre-processing method is useful on a variety of retinal images
-    # - a separability score, which is much faster and simpler to compute than ablative
-        # analysis, can be used to guide development of pre-processing methods.
-        # We developed the pre-processing methods on the IDRiD train set,
-        # guided by the separability scores, and then applied these methods to
-        # the QualDR grading task.
 
 """
     idea: take trained identity model.  get output distribution on a minibatch.  then, "fine-tune" it by trying combinations of inputs that improve perf (maybe just brute force) using botorch?

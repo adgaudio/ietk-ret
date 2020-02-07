@@ -2,8 +2,8 @@ import pandas as pd ;
 from screendr.datasets import QualDR
 
 dfs = {}
-for ts in [True, False]:
-    d = QualDR(use_train_set=ts)
+for ts in ['train', 'test']:
+    d = QualDR(default_set=ts)
     grades = [x[1] for x in d]
     df = pd.DataFrame(grades, columns=['DR', 'MD', 'PC'])
     print('use_train_set =', ts)

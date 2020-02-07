@@ -6,6 +6,7 @@ import pickle
 import PIL
 import numpy as np
 import os.path
+import torch
 
 from ietk.data import IDRiD
 import screendr.datasets as D
@@ -22,7 +23,7 @@ for train_or_test in ['train', 'test']:
         getitem_transform=lambda dct: (dct['img_id'], D.IDRiD_Segmentation.as_tensor(return_numpy_array=True)(dct)))
     for n, (img_id, tensor) in enumerate(dset):
         im, mask = S.preprocess(tensor, 'identity', rot=0, flip_x=False, flip_y=False)
-        dct = {'tensor': torch.cat([im, mask]).permute(1,2,0).numpy()}
+        dct = {'tensor': torch.cat([im, mask]).permute(1,2,0).numpy() * 255}
 
         # --> debug plots
         #  from matplotlib import pyplot as plt
