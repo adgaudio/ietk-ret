@@ -84,9 +84,14 @@ class BDSSegment(api.FeedForwardModelConfig):
             return model.to(self.device)
 
     def get_lossfn(self):
-        w = IDRiD_Segmentation.POSITIVE_PIXELS_PER_CATEGORY_TRAIN
+        if self.data_name == 'idrid':
+            w = D.IDRiD_Segmentation.POSITIVE_PIXELS_PER_CATEGORY_TRAIN
+        elif self.data_name == 'rite':
+            w = torch.tensor([1.,1.,1.,1.])
+        else:
+            raise NotImplementedError()
         w = w / w.sum()
-        per_channel_weights = w.max() / w
+        per_channel_weights = (w.max() / w).to(self.device)
         def loss_cross_entropy_per_output_channel(input, target):
             batch_size = target.shape[0]
             #  return torch.nn.functional.binary_cross_entropy(
@@ -94,10 +99,11 @@ class BDSSegment(api.FeedForwardModelConfig):
 
             assert self._num_output_channels == target.shape[1]
             losses = torch.stack([
-                per_channel_weights * torch.nn.functional.binary_cross_entropy(
+                torch.nn.functional.binary_cross_entropy(
                     input[:,x].view(batch_size, -1), target[:,x].view(batch_size, -1),
                     reduction='sum')
                 for x in range(target.shape[1])])
+            losses = losses * per_channel_weights
             return losses.sum()
         return loss_cross_entropy_per_output_channel
 
