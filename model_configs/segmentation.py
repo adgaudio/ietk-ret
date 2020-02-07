@@ -1,5 +1,8 @@
+import cv2
 import logging
 import numpy as np
+import os
+from os.path import join
 import torch.nn
 import torch.utils.data as TD
 import torchvision.transforms as tvt
@@ -37,20 +40,6 @@ def getitem_transforms(train_val_test: str, ietk_method_name: str,
     return tvt.Compose(fns)
 
 
-def loss_cross_entropy_per_output_channel(input, target):
-    batch_size = target.shape[0]
-    return torch.nn.functional.binary_cross_entropy(
-        input.view(batch_size, -1), target.view(batch_size, -1))
-
-    #  assert self._num_output_channels == target.shape[1]
-    #  losses = torch.stack([
-    #      torch.nn.functional.binary_cross_entropy(
-    #          input[x], target[x], reduction='sum')
-    #      for x in range(target.shape[1])])
-    #  losses.backward = (losses.sum()/target.nelement()).backward
-    #  return losses
-
-
 def IDRiD_Segmentation_PREPROCESSED(base_dir):
     """Load the pickled dataset with a different base directory"""
     def _IDRiD_Segmentation_wrapper(use_train_set, *, getitem_transform, **kwargs):
@@ -70,13 +59,14 @@ class BDSSegment(api.FeedForwardModelConfig):
     def __init__(self, cfg):
         data_name = cfg.get('data_name') or self.data_name
         if data_name == 'rite':
-            self._num_output_channels = 1
+            self._num_output_channels = 4
         elif data_name == 'idrid':
             self._num_output_channels = 5
         else:
             raise NotImplementedError()
         super().__init__(cfg)
         self._early_stopping = api.EarlyStopping(['MCC_val', 'Dice_val'], 30)
+        os.makedirs(self.checkpoint_img_dir.format(self=self), exist_ok=True)
 
     __model_params = api.CmdlineOptions(
         'model', {'name': 'unused',  # unused
@@ -90,10 +80,23 @@ class BDSSegment(api.FeedForwardModelConfig):
             model = torch.hub.load(
                 'mateuszbuda/brain-segmentation-pytorch', 'unet',
                 in_channels=3, out_channels=self._num_output_channels,
-                init_features=32, pretrained=False)
+                init_features=128, pretrained=False)
             return model.to(self.device)
 
     def get_lossfn(self):
+        per_channel_weights = 1
+        def loss_cross_entropy_per_output_channel(input, target):
+            batch_size = target.shape[0]
+            #  return torch.nn.functional.binary_cross_entropy(
+                #  input.view(batch_size, -1), target.view(batch_size, -1))
+
+            assert self._num_output_channels == target.shape[1]
+            losses = torch.stack([
+                per_channel_weights * torch.nn.functional.binary_cross_entropy(
+                    input[:,x].view(batch_size, -1), target[:,x].view(batch_size, -1),
+                    reduction='sum')
+                for x in range(target.shape[1])])
+            return losses.sum()
         return loss_cross_entropy_per_output_channel
 
     __optimizer_params = api.CmdlineOptions(
@@ -139,8 +142,14 @@ class BDSSegment(api.FeedForwardModelConfig):
             'idrid', IDRiD_Segmentation_PREPROCESSED(self.data_idrid_base_dir),
             lambda x: x))  # D.IDRiD_Segmentation.as_tensor(return_numpy_array=True)))
         dsets.update(self._get_datasets(
-            'rite', D.RITE, D.RITE.as_tensor(['vessel'], return_numpy_array=True)))
+            'rite', D.RITE, D.RITE.as_tensor(['av', 'vessel'], return_numpy_array=True)))
         return super().get_datasets(dsets)
+
+    def get_category_names(self):
+        if self.data_name == 'rite':
+            return D.RITE.LABELS_AV + ['vessels']
+        elif self.data_name == 'idrid':
+            return D.IDRiD_Segmentation.LABELS
 
     if torch.cuda.device_count():
         data_loader_num_workers = int(torch.multiprocessing.cpu_count()/torch.cuda.device_count()-3)
@@ -176,13 +185,22 @@ class BDSSegment(api.FeedForwardModelConfig):
         # columns are predicted.
         # rows are known true
         # top left is true positive
-        yh = yhat > 0.5
-        y = y.bool()
-        a,b,c = (yh & y).sum(), yh.sum(), y.sum()
-        a,b,c = [x.cpu() for x in (a,b,c)]
-        tn = (~yh & ~y).sum().cpu()  # true negatives
-        cm = torch.tensor([[a, c-a], [b-a, tn]])
+        yhat_th = yhat > 0.5
+        y_bool = y.bool()
+
+        def compute_cm(yh, y):
+            a,b,c = (yh & y).sum(), yh.sum(), y.sum()
+            a,b,c = [x.cpu() for x in (a,b,c)]
+            tn = (~yh & ~y).sum().cpu()  # true negatives
+            cm = torch.tensor([[a, c-a], [b-a, tn]])
+            return cm
+        cm = compute_cm(yhat_th, y_bool)
         cache.add('confusion_matrix', cm.cpu().float())
+
+        # also log the confusion matrix for each task category (ie IDRiD lesion)
+        for i, category in enumerate(self.get_category_names()):
+            cm = compute_cm(yhat_th[:, i], y_bool[:, i])
+            cache.add(f'confusion_matrix_{category}', cm.cpu().float())
 
         # --> update loss
         cache.streaming_mean(f'loss', loss.item(), y.shape[0])
@@ -199,13 +217,23 @@ class BDSSegment(api.FeedForwardModelConfig):
             cache['confusion_matrix']).item()
         eld['Loss'] = cache['loss'].mean
 
+        # --> compute dice for each category
+        for category in self.get_category_names():
+            (tp, fn), (fp, tn) = cache[f'confusion_matrix_{category}']
+            eld[f'Dice_{category}'] = (2*tp / (2*tp + fp + fn)).item()
+            eld[f'MCC_{category}'] = api.confusion_matrix_stats.matthews_correlation_coeff(
+                cache['confusion_matrix']).item()
+
         # --> add suffix to all keys
         eld = {f'{k}_{dloader}': v for k, v in eld.items()}
 
         if dloader in {'train', 'test'}:
             if dloader == 'train':  # append val cache too
-                eval_perf(self, 'val')
-                eld.update(self.log_epoch('val'))
+                if self.data_train_val_split == 1:
+                    eld.update({k.replace('_train', '_val'): 0 for k in eld})
+                else:
+                    eval_perf(self, 'val')
+                    eld.update(self.log_epoch('val'))
             super().log_epoch(eld)
         else:
             assert dloader == 'val', 'sanity check'
@@ -215,18 +243,50 @@ class BDSSegment(api.FeedForwardModelConfig):
             return eld  # for recursion
 
     def get_log_header(self):
+        fields = ['Dice', 'MCC', 'Loss']
+        fields.extend([f'{f}_{cat}' for f in ['Dice', 'MCC']
+                       for cat in self.get_category_names()])
         return super().get_log_header([
             f'{metric}_{dloader}'
-            for metric in ['Dice', 'MCC', 'Loss']
+            for metric in fields
             for dloader in (['train', 'val']
                             if self.data_use_train_set else ['test'])])
 
     __checkpoint_params = api.CmdlineOptions(
-        'checkpoint', {'fname': 'epoch_best.pth' })
+        'checkpoint', {
+            'fname': 'epoch_best.pth',
+            'img_dir': '{self.base_dir}/results/{self.run_id}/images/'})
 
     def save_checkpoint(self):
         if self._early_stopping.is_best_performing_epoch(self.cur_epoch):
             super().save_checkpoint(force_save=True)
+            # save image (during training)
+            for X, y in self.data_loaders.val:
+                yhat = self.model(X.to(self.device))
+                self._save_imgs_to_file(X, yhat)
+                break
+
+    def _save_imgs_to_file(self, X, yhat, start_idx=0):
+        """Save a minibatch output from model to disk"""
+        yhat = yhat.cpu().numpy()
+        X = X.cpu().permute(0,2,3,1).numpy()
+        for i in range(yhat.shape[0]):
+            # --> write input image
+            fp = join(
+                self.checkpoint_img_dir,
+                f'{self.cur_epoch}-{start_idx+i}-input.tiff'
+            ).format(self=self, i=i)
+            was_written = cv2.imwrite(fp, X[i][:,:,[2,1,0]])
+            assert was_written
+            # --> write output segmentation images
+            for ch, cat in enumerate(self.get_category_names()):
+                fp = join(
+                    self.checkpoint_img_dir,
+                    f'{self.cur_epoch}-{start_idx+i}-{cat}.tiff'
+                ).format(self=self, i=i)
+                was_written = cv2.imwrite(
+                    fp, ((yhat[i,ch]>0.5)*255).astype('uint8'))
+                assert was_written
 
     def get_checkpoint_state(self):
         dct = super().get_checkpoint_state()
@@ -261,6 +321,13 @@ class BDSSegment(api.FeedForwardModelConfig):
                 self.epoch_cache.clear()
                 eval_perf(self, 'test')
                 self.log_epoch('test')
+                # --> plot up to 30 images and predictions in the dataset.
+                N = 0
+                for X, y in self.data_loaders.test:
+                    if N > 30: break
+                    yhat = self.model(X.to(self.device))
+                    self._save_imgs_to_file(X, yhat, N)
+                    N += X.shape[0]
 
 
 if __name__ == "__main__":
