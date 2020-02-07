@@ -44,17 +44,18 @@ models="identity A A2 B C C2 C3 D W X Y Z A+X C+X A+C A+Z A+C+X A+C+X+Z A+B B+C 
 # done
 
 # okay now train on train set and evaluate test set.
+# bigger model, more metrics, rite also does av predictions, save imgs with checkpoints
 for mdl in $models ; do
   echo I2-$mdl python -m screendr model_configs BDSSegment \
     --data-name idrid --ietk-method-name $mdl \
     --epochs 100 \
     --checkpoint-fname 'epoch_best.pth' \
-    --data-train-val-split 1
+    --data-train-val-split 0.97
   echo R2-$mdl python -m screendr model_configs BDSSegment \
     --data-name rite --ietk-method-name $mdl \
     --epochs 80 \
-    --checkpoint-fname 'epoch_best.pth'\
-    --data-train-val-split 1
+    --checkpoint-fname 'epoch_best.pth' \
+    --data-train-val-split 0.91
 done
 
 for mdl in $models ; do
