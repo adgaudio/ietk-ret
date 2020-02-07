@@ -84,7 +84,9 @@ class BDSSegment(api.FeedForwardModelConfig):
             return model.to(self.device)
 
     def get_lossfn(self):
-        per_channel_weights = 1
+        w = IDRiD_Segmentation.POSITIVE_PIXELS_PER_CATEGORY_TRAIN
+        w = w / w.sum()
+        per_channel_weights = w.max() / w
         def loss_cross_entropy_per_output_channel(input, target):
             batch_size = target.shape[0]
             #  return torch.nn.functional.binary_cross_entropy(
@@ -222,7 +224,7 @@ class BDSSegment(api.FeedForwardModelConfig):
             (tp, fn), (fp, tn) = cache[f'confusion_matrix_{category}']
             eld[f'Dice_{category}'] = (2*tp / (2*tp + fp + fn)).item()
             eld[f'MCC_{category}'] = api.confusion_matrix_stats.matthews_correlation_coeff(
-                cache['confusion_matrix']).item()
+                cache[f'confusion_matrix_{category}']).item()
 
         # --> add suffix to all keys
         eld = {f'{k}_{dloader}': v for k, v in eld.items()}
