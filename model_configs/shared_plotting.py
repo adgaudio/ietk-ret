@@ -17,6 +17,12 @@ def _make_namespace(runid_regex):
     )
 
 
+def _standardize_method_name(x):
+    if '-' in x:  # remove the prefix like Rtest2-
+        x = x.split('-', 1)[1]
+    return f'avg{x.count("+")+1}:{x}' if '+' in x else x
+
+
 def get_perf_csvs_as_df(runid_regex):
     ns = _make_namespace(runid_regex)
     df = _mode_1_get_perf_data_as_df(ns)
@@ -24,12 +30,12 @@ def get_perf_csvs_as_df(runid_regex):
     df.rename(index=lambda x: re.sub(r'Q.*?-', '', x), level='run_id', inplace=True)
     df.index.set_names('Method', level='run_id', inplace=True)
     # --> standardize to naming convention used by separability scores
-    df.rename(index=lambda x: f'avg{x.count("+")+1}:{x}' if '+' in x else x, level='Method', inplace=True)
+    df.rename(index=_standardize_method_name, level='Method', inplace=True)
     return df
 
 
 def get_qualdr_test_df(just_mcc_test_cols=False):
-    df = get_perf_csvs_as_df('Qtest3')
+    df = get_perf_csvs_as_df('Qtest2')  # TODO: switch to 3
     if just_mcc_test_cols:
         print(df.columns)
         cols = [x for x in df.columns if x.endswith('_test') and x.startswith('MCC_hard')]
@@ -37,11 +43,12 @@ def get_qualdr_test_df(just_mcc_test_cols=False):
         df.columns = [
             re.sub('MCC_hard_(.*?)_test', r'\1', x)
             for x in df.columns]  # [retinopathy, maculopathy, photocoagulation]
-        df = df.replace({'retinopathy': 'DR', 'maculopathy': 'MD', 'photocoagulation': 'PC'})
+        replace = {'retinopathy': 'DR', 'maculopathy': 'MD', 'photocoagulation': 'PC'}
+        df.columns = [replace[x] for x in df.columns]
     return df
 
 
-def _get_segmentation_test_df(runid_regex, just_mcc_test_cols):
+def _get_segmentation_test_df(runid_regex, just_dice_test_cols):
     df = get_perf_csvs_as_df(runid_regex)
     if just_dice_test_cols:
         cols = [x for x in df.columns if x.endswith('_test') and x.startswith('Dice_') and x!='Dice_test']
@@ -49,6 +56,9 @@ def _get_segmentation_test_df(runid_regex, just_mcc_test_cols):
         df.columns = [
             re.sub('Dice_(.*?)_test', r'\1', x)
             for x in df.columns]  # [MA, HE, ...]
+
+    df.rename(index=_standardize_method_name, level='Method', inplace=True)
+    return df
 
 
 def get_idrid_test_df(just_dice_test_cols=False):
@@ -73,7 +83,7 @@ def correlation_plot(col1: str, col2: str, df, ax):
     ax.set_title(col1.capitalize())
     a,b = df[[col2, col1]].dropna().T.values
     pearson = scipy.stats.pearsonr(a,b)
-    ax.legend([f'$R={np.round(pearson[0], 2)}$\n$p={np.round(pearson[1], 3)}$'], loc='lower right')
+    ax.legend([f'$R={np.round(pearson[0], 2)}$\n$p={np.round(pearson[1], 4)}$'], loc='lower right')
 
 
 def report_topn_models(cdfs, N, new_metric_col_name):

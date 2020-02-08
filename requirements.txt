@@ -1,4 +1,5 @@
 argparse
+argparse_dataclass
 cv2
 efficientnet_pytorch
 glob

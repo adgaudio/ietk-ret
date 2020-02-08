@@ -17,12 +17,14 @@ rite = SP.get_rite_test_df(True)
 
 # Top N tables
 N = 1
-def save_table(df, fp):
-    table = SP.report_topn_models(df, N)
+def save_table(df, fp, new_metric_col_name):
+    table = SP.report_topn_models(df, N, new_metric_col_name)
     print(table.to_string())
+    print(fp)
     table.reset_index().to_latex(
-        f'{base_dir}/qualdr_mcc_top_models.tex',
-        index=False, multirow=True, column_format='|lll')
+        fp, index=False, multirow=True, column_format='|lll')
+
+
 save_table(qualdr, f'{base_dir}/qualdr_top_models.tex', 'MCC')
 save_table(idrid, f'{base_dir}/idrid_top_models.tex', 'Dice')
 save_table(rite, f'{base_dir}/rite_top_models.tex', 'Dice')
@@ -38,7 +40,7 @@ def corr_catplot(df, xlabel='MCC (QualDR Test)'):
     Ncol = len(df.columns)-1
     fig, axs = plt.subplots(1, Ncol, sharex=True, sharey=True)
     last_col = df.columns[-1]
-    for ax, col in zip(axs, qd2.columns):
+    for ax, col in zip(axs, df.columns):
         SP.correlation_plot(col, last_col, df, ax=ax)
     [ax.set_ylabel('') for ax in axs.ravel()[1:]]
     [ax.set_xlabel('') for ax in axs.ravel()]
@@ -48,7 +50,7 @@ for xlabel, tdf in [('MCC (QualDR Test)', qualdr),
             ('Dice (IDRiD Test)', idrid),
             ('Dice (RITE Test)', rite)]:
     corr_catplot(tdf.join(sep, how='outer'), xlabel)\
-            .savefig(f'{base_dir}/correlation_sep_vs_{xlabel.lower().replace(" ","_")}.png')
+            .savefig(f'{base_dir}/correlation_{xlabel.lower().replace(" ","_").replace("(","").replace(")","")}.png')
 
 
 

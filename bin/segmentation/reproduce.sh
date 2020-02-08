@@ -45,15 +45,17 @@ models="identity A A2 B C C2 C3 D W X Y Z A+X C+X A+C A+Z A+C+X A+C+X+Z A+B B+C 
 
 # okay now train on train set and evaluate test set.
 # bigger model, more metrics, rite also does av predictions, save imgs with checkpoints
+# R2 and I2 have no class balancing weights and a MCC bug.  the I2.2 and R2.2 address them
+
 for mdl in $models ; do
-  echo I2-$mdl python -m screendr model_configs BDSSegment \
+  echo I2.2-$mdl python -m screendr model_configs BDSSegment \
     --data-name idrid --ietk-method-name $mdl \
     --epochs 100 \
     --checkpoint-fname 'epoch_best.pth' \
     --data-train-val-split 0.97
-  echo R2-$mdl python -m screendr model_configs BDSSegment \
+  echo R2.2-$mdl python -m screendr model_configs BDSSegment \
     --data-name rite --ietk-method-name $mdl \
-    --epochs 80 \
+    --epochs 100 \
     --checkpoint-fname 'epoch_best.pth' \
     --data-train-val-split 0.91
 done
@@ -62,14 +64,14 @@ for mdl in $models ; do
   echo Itest2-$mdl python -m screendr model_configs BDSSegment \
     --data-name idrid --ietk-method-name $mdl \
     --epochs 100 \
-    --checkpoint-fp ./data/results/I2-$mdl/model_checkpoints/epoch_best.pth \
+    --checkpoint-fp ./data/results/I2.2-$mdl/model_checkpoints/epoch_best.pth \
     --no-data-use-train-set
 done
 for mdl in $models ; do
   echo Rtest2-$mdl python -m screendr model_configs BDSSegment \
     --data-name rite --ietk-method-name $mdl \
     --epochs 100 \
-    --checkpoint-fp ./data/results/R2-$mdl/model_checkpoints/epoch_best.pth \
+    --checkpoint-fp ./data/results/R2.2-$mdl/model_checkpoints/epoch_best.pth \
     --no-data-use-train-set
 done
 ) | run_gpus
