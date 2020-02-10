@@ -59,6 +59,7 @@ def get_separability_scores(fps, is_3d: bool):
 
 
 if __name__ == "__main__":
+    do_plots = False
     #  for is_3d in ['hist3d-', '']:  # KS test for hist3d doesn't make sense.
     for is_3d in ['']:
         save_img_dir='./data/histograms_idrid_plots/separability_consistency'
@@ -72,6 +73,8 @@ if __name__ == "__main__":
         df = get_separability_scores(fps, bool(is_3d))
         df['method_name'] = df['method_name'].apply(lambda x: 'avg%s:%s' % (x.count('+')+1, x) if '+' in x else x)
         df.to_csv(save_csv_fp)
+        if not do_plots:
+            continue
 
         print('separability plots')
         # KS score, per channel

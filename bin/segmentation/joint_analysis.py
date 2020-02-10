@@ -10,9 +10,11 @@ base_dir = './data/plots/joint_analysis'
 os.makedirs(base_dir, exist_ok=True)
 
 # load the performance data
-sep = SP.get_separability_scores()
+sep_qualdr = SP.get_separability_scores(('MA', 'HE', 'EX', 'SE', 'OD'))
 qualdr = SP.get_qualdr_test_df(True)
+sep_idrid = SP.get_separability_scores(('MA', 'HE', 'EX', 'SE', 'OD'))
 idrid = SP.get_idrid_test_df(True)
+sep_rite = SP.get_separability_scores(('MA', 'HE', 'EX', 'SE', 'OD'))
 rite = SP.get_rite_test_df(True)
 
 # Top N tables
@@ -21,8 +23,9 @@ def save_table(df, fp, new_metric_col_name):
     table = SP.report_topn_models(df, N, new_metric_col_name)
     print(table.to_string())
     print(fp)
-    table.reset_index().to_latex(
-        fp, index=False, multirow=True, column_format='|lll')
+    table.to_latex(
+        fp, index=True, multirow=True, column_format='|lll',
+        bold_rows=True, sparsify=True)
 
 
 save_table(qualdr, f'{base_dir}/qualdr_top_models.tex', 'MCC')
@@ -38,7 +41,7 @@ save_table(rite, f'{base_dir}/rite_top_models.tex', 'Dice')
 def corr_catplot(df, xlabel='MCC (QualDR Test)'):
     # scatter plot for first N-1 columns against the Nth column
     Ncol = len(df.columns)-1
-    fig, axs = plt.subplots(1, Ncol, sharex=True, sharey=True)
+    fig, axs = plt.subplots(1, Ncol, figsize=(6, 3), sharex=True, sharey=True)
     last_col = df.columns[-1]
     for ax, col in zip(axs, df.columns):
         SP.correlation_plot(col, last_col, df, ax=ax)
@@ -46,11 +49,11 @@ def corr_catplot(df, xlabel='MCC (QualDR Test)'):
     [ax.set_xlabel('') for ax in axs.ravel()]
     axs[int(Ncol//2)].set_xlabel(xlabel)
     return fig
-for xlabel, tdf in [('MCC (QualDR Test)', qualdr),
-            ('Dice (IDRiD Test)', idrid),
-            ('Dice (RITE Test)', rite)]:
+for xlabel, tdf, sep in [('MCC (QualDR Test)', qualdr, sep_qualdr),
+            ('Dice (IDRiD Test)', idrid, sep_idrid),
+            ('Dice (RITE Test)', rite, sep_rite)]:
     corr_catplot(tdf.join(sep, how='outer'), xlabel)\
-            .savefig(f'{base_dir}/correlation_{xlabel.lower().replace(" ","_").replace("(","").replace(")","")}.png')
+            .savefig(f'{base_dir}/correlation_{xlabel.lower().replace(" ","_").replace("(","").replace(")","")}.png', bbox_inches='tight')
 
 
 

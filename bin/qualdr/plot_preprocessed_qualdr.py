@@ -27,6 +27,6 @@ for fname in fns:
     with open(ifp, 'rb') as ifin:
         idct = pickle.load(ifin)
     identity_img = idct['image']
-    ax2.imshow(identity_img)
+    ax2.imshow(identity_img.astype('uint8'))
     #  plt.pause(0.5)
     plt.waitforbuttonpress()

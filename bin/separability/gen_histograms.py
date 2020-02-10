@@ -7,15 +7,15 @@ Save histogram data and plots to file.
 """
 import numpy as np
 from matplotlib import pyplot as plt
-from functools import lru_cache
 from os.path import join
 import os
 
-
 from ietk import methods
-from ietk import metric
-from ietk.data import IDRiD
+#  from ietk.data import IDRiD
 from ietk import util
+
+import model_configs.shared_preprocessing as SP
+import screendr.datasets as D
 
 
 def sep_pixels(img, focus_region, mask):
@@ -25,23 +25,30 @@ def sep_pixels(img, focus_region, mask):
     return healthy, diseased
 
 
-def iter_imgs(dset, ns):
-    for img_id, img, labels in dset.iter_imgs(labels=ns.labels, subset=ns.img_ids):
+def iter_imgs(ns):
+    #  dset = IDRiD(ns.data_dir)
+
+
+    dset = D.IDRiD_Segmentation(getitem_transform=lambda dct: (
+        dct['img_id'], D.IDRiD_Segmentation.as_tensor(return_numpy_array=True)(dct)))
+    for img_id, tensor in dset:
+        img, _stack = SP.preprocess(
+            tensor, 'identity', rot=0, flip_x=0, flip_y=0)
+        _stack = _stack.numpy().astype('bool')
+        img = img.permute(1,2,0).numpy()
+        labels = {k: _stack[i] for i, k in enumerate(D.IDRiD_Segmentation.LABELS)}
+
         focus_region = util.get_foreground(img)
         for method_name, func in methods.all_methods.items():
             if method_name not in ns.methods:
                 continue
             modified_img = None
             for lesion_name, mask in labels.items():
-                if method_name.startswith('Bayes Sharpen, '):
-                    # hack: this method requires the lesion name to load the appropriate prior.
-                    modified_img = func(img=img, focus_region=focus_region, label_name=lesion_name)
-                elif modified_img is None:
-                    modified_img = func(img=img, focus_region=focus_region)
+                modified_img = func(img=img, focus_region=focus_region)
                 try:
                     healthy, diseased = sep_pixels(
                         modified_img, focus_region, mask)
-                except:
+                except Exception:
                     print("FAIL", img_id, lesion_name, method_name, type(img), type(focus_region))
                     raise
                 yield (img_id, method_name, lesion_name, healthy, diseased)
@@ -67,23 +74,22 @@ def gen_histogram(img_id, method_name, lesion_name, healthy, diseased, **junk):
 
 
 def main(ns):
-    dset = IDRiD(ns.data_dir)
     os.makedirs(ns.save_dir, exist_ok=True)
     os.makedirs(ns.save_dir_data, exist_ok=True)
-    for (img_id, method_name, lesion_name, healthy, diseased) in iter_imgs(dset, ns):
+    for (img_id, method_name, lesion_name, healthy, diseased) in iter_imgs(ns):
         filename_prefix = f'{img_id}-{lesion_name.replace(" ","_")}-{method_name.replace(" ","_")}'
         img_fp = join(ns.save_dir, f'{filename_prefix}.png')
         data_fp = join(ns.save_dir_data, f'{filename_prefix}.npz')
         data_3d_fp = join(ns.save_dir_data, f'hist3d-{filename_prefix}.npz')
-        if os.path.exists(img_fp):
-            print(f'Image file exists, not re-creating: {img_fp}')
-        else:
-            fig = gen_histogram(**locals())
-            fig.savefig(img_fp)
-            if ns.show_plot:
-                plt.show()
-            else:
-                plt.close(fig)
+        #  if os.path.exists(img_fp):
+            #  print(f'Image file exists, not re-creating: {img_fp}')
+        #  else:
+            #  fig = gen_histogram(**locals())
+            #  fig.savefig(img_fp)
+            #  if ns.show_plot:
+                #  plt.show()
+            #  else:
+                #  plt.close(fig)
         if os.path.exists(data_fp):
             print(f'Data file exists, not re-creating: {data_fp}')
         else:
@@ -94,12 +100,12 @@ def main(ns):
                 hs.append(h)
                 ds.append(d)
             np.savez_compressed(data_fp, healthy=np.stack(hs), diseased=np.stack(ds))
-        if os.path.exists(data_3d_fp):
-            print(f'3d histogram data file exists, not re-creating: {data_3d_fp}')
-        else:
-            H = np.histogramdd(healthy.clip(0-1/255,1+1/255), bins=256+2, range=[(-1,257)]*3)[0]
-            D = np.histogramdd(diseased.clip(0-1/255,1+1/255), bins=256+2, range=[(-1,257)]*3)[0]
-            np.savez_compressed(data_3d_fp, healthy=H, diseased=D)
+        #  if os.path.exists(data_3d_fp):
+            #  print(f'3d histogram data file exists, not re-creating: {data_3d_fp}')
+        #  else:
+            #  H = np.histogramdd(healthy.clip(0-1/255,1+1/255), bins=256+2, range=[(-1,257)]*3)[0]
+            #  D = np.histogramdd(diseased.clip(0-1/255,1+1/255), bins=256+2, range=[(-1,257)]*3)[0]
+            #  np.savez_compressed(data_3d_fp, healthy=H, diseased=D)
 
 
 def bap():

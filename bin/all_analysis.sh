@@ -9,7 +9,7 @@ python bin/qualdr/qualdr_analysis.py
 python bin/segmentation/joint_analysis.py
 
 # RITE vessel segmentation maps
-python bin/paper_plot_segmentation_maps.py
+python bin/paper_plot_segmentation_maps2.py
 
 # Qualitative visualization of pre-processing methods
 python ./bin/paper_plot_qualitative.py
