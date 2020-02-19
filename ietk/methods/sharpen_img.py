@@ -70,7 +70,7 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
         t_refined = t
     if np.shape(t):
         t_refined[bg] = 1  # ignore background, but fix division by zero
-    J = (  # Eq. 22 of paper
+    J = (
         img.astype('float')-A) / np.maximum(1e-8, np.maximum(t_refined, np.min(t_refined)/2)) + A
     #  assert np.isnan(J).sum() == 0
     if bg is not None:
@@ -96,6 +96,8 @@ def sharpen(img, bg=None, t='laplace', blur_radius=30, blur_guided_eps=1e-8,
 
 
 if __name__ == "__main__":
+    import os
+    os.makedirs('./data/plots', exist_ok=True)
     dset = IDRiD('./data/IDRiD_segmentation')
     img, labels = dset['IDRiD_26']
     #  img_id, img, labels = dset.sample()
@@ -127,7 +129,7 @@ if __name__ == "__main__":
     #  axs[2].set_title('Sharpened without guided filter')
     [ax.axis('off') for ax in axs]
     f.subplots_adjust(wspace=0.02, hspace=0.02, top=0.9, bottom=0.1)
-    f.savefig('./paper/figures/sharpen_fundus.png', bbox_inches='tight')
+    f.savefig('./data/plots/sharpen_fundus.png', bbox_inches='tight')
 
     #  plt.figure(num=4) ; plt.imshow(util.norm01(r2, bg))
     #  plt.figure(num=5) ; plt.imshow(r2.clip(0, 1))

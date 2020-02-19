@@ -43,6 +43,8 @@ def resizeforplot(img):
 if __name__ == "__main__":
     from ietk import methods
     from ietk import metric
+    import os
+    os.makedirs('data/plots/brighten_darken/', exist_ok=True)  # save dir
     # load an image
     dset = IDRiD('./data/IDRiD_segmentation')
     img_id, img, labels = dset.sample()
@@ -120,7 +122,7 @@ if __name__ == "__main__":
     axs.ravel()[3].set_title(t_eqs[3], fontsize=20)
     f.tight_layout()
     f.subplots_adjust(wspace=0.02, top=0.92)
-    f.savefig('./paper/figures/amplifier_t.png', bbox_inches='tight')
+    f.savefig('./data/plots/brighten_darken/amplifier_t.png', bbox_inches='tight')
 
     f2, ax = plt.subplots(num=2, figsize=(10,10))
     f2.suptitle('Source Image', fontsize=28)
@@ -129,7 +131,7 @@ if __name__ == "__main__":
     ax.axis('off')
     f2.tight_layout()
     f2.subplots_adjust(wspace=0.02, hspace=0.02, top=0.92)
-    f2.savefig('./paper/figures/amplifier_I.png', bbox_inches='tight')
+    f2.savefig('./data/plots/brighten_darken/amplifier_I.png', bbox_inches='tight')
 
     f3, axs = plt.subplots(2,2, num=3, figsize=(10,10))
     f3.suptitle(r'Whole Image Brightening:  $\mathbf{J} = \frac{\mathbf{I}-\mathbf{0}}{\mathbf{t}} + \mathbf{0}$', fontsize=28)
@@ -145,10 +147,10 @@ if __name__ == "__main__":
         ax3b.imshow(resizeforplot(J3b))
     f3.tight_layout()
     f3.subplots_adjust(wspace=0.02, hspace=0.02, top=.9)
-    f3.savefig('paper/figures/amplifier_b.png', bbox_inches='tight')
+    f3.savefig('data/plots/brighten_darken/amplifier_b.png', bbox_inches='tight')
     f3b.tight_layout()
     f3b.subplots_adjust(wspace=0.02, hspace=0.02, top=.9)
-    f3b.savefig('paper/figures/amplifier_b_sharpen.png', bbox_inches='tight')
+    f3b.savefig('data/plots/brighten_darken/amplifier_b_sharpen.png', bbox_inches='tight')
 
     f4, axs = plt.subplots(2,2, num=4, figsize=(10,10))
     f4.suptitle(r'Whole Image Darkening:  $\mathbf{J} = \frac{\mathbf{I}-\mathbf{1}}{\mathbf{t}} + \mathbf{1}$', fontsize=28)
@@ -164,10 +166,10 @@ if __name__ == "__main__":
         ax4b.imshow(resizeforplot(J4b))
     f4.tight_layout()
     f4.subplots_adjust(wspace=0.02, hspace=0.02, top=.9)
-    f4.savefig('paper/figures/amplifier_d.png', bbox_inches='tight')
+    f4.savefig('data/plots/brighten_darken/amplifier_d.png', bbox_inches='tight')
     f4b.tight_layout()
     f4b.subplots_adjust(wspace=0.02, hspace=0.02, top=.9)
-    f4b.savefig('paper/figures/amplifier_d_sharpen.png', bbox_inches='tight')
+    f4b.savefig('data/plots/brighten_darken/amplifier_d_sharpen.png', bbox_inches='tight')
     plt.show(block=False)
 
     # Extra visuals showing effects of composing images together.  compute
@@ -181,7 +183,7 @@ if __name__ == "__main__":
     #  for i, (bright, dark) in enumerate(product([A,B,C,D], [W,X,Y,Z])):
     #      grid[i].imshow(resizeforplot(sharpen(bright/2+dark/2, bg)))
     #      #  grid[i].imshow(resizeforplot(bright/2+dark/2))
-    #  f5.savefig('paper/figures/compose_parallel_avg.png', bbox_inches='tight')
+    #  f5.savefig('data/plots/brighten_darken/compose_parallel_avg.png', bbox_inches='tight')
 
     #  #  # composition AZ and ZA
     #  bd = (solveJ(i, a, t) for i in [A,B,C,D] for a in [1] for t in [a,b,c,d])
@@ -196,8 +198,8 @@ if __name__ == "__main__":
     #      #  grid7[i].imshow(resizeforplot(sharpen(d, bg)))
     #      grid6[i].imshow(resizeforplot(b))
     #      grid7[i].imshow(resizeforplot(d))
-    #  f6.savefig('paper/figures/compose_series_bd.png', bbox_inches='tight')
-    #  f7.savefig('paper/figures/compose_series_db.png', bbox_inches='tight')
+    #  f6.savefig('data/plots/brighten_darken/compose_series_bd.png', bbox_inches='tight')
+    #  f7.savefig('data/plots/brighten_darken/compose_series_db.png', bbox_inches='tight')
 
 
     plt.show(block=False)
