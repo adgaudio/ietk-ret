@@ -1,0 +1,16 @@
+argparse
+argparse_dataclass
+cv2
+efficientnet_pytorch
+matplotlib
+mpl_toolkits
+numpy
+pandas
+pillow
+scipy
+seaborn
+torch
+torchvision
+
+ietk
+screendr
