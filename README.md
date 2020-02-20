@@ -1,94 +1,64 @@
 # IETK-Ret - Image Enhancement Toolkit for Retinal Fundus Images
 
-A theory for image distortion due to scattering of light can be used to
-create a variety of image enhancement methods.
+This repository contains a collection of enhancement methods useful for
+retinal fundus images, with emphasis on Pixel Color Amplification.
 
-This repo accompanies a paper on Image Enhancement
+`ietk.util` - methods to separate the fundus from the black background,
+as well as crop the image to minimize background.
 
-TODO: readme below here.
+`ietk.methods` - a set of enhancement methods, mostly based on pixel
+color amplification.
 
-# Illumination Correction
-
-This code implements an illumination correction filter by making use of
-the Dark Channel Prior dehazing theory for removing fog from images of outdoors.
-I apply it to retinal images from the Messidor dataset.
+`ietk.data` - access to the images in the IDRiD dataset for R&D.
 
 
-# Pre-requisite python libraries
-Required libraries to run the illumination correction and tests, and
-to generate an illumination corrected dataset.
-You may need most recent version of opencv
-
-```
-cv2
-glob
-joblib
-matplotlib
-multiprocessing
-numpy
-os
-pandas
-random
-scipy
-seaborn
-```
-
-# Background papers:
-
-Saved in pdf files here:
-
-./dark_channel.pdf
-./guided_filter.pdf
+<!-- It also contains the code used for the Pixel Color Amplification paper: -->
+<!-- todo -->
+<!-- [code](./iciar2020)  [paper: Pixel Color Amplification](TODO) -->
 
 
-# Run the scripts
-
-NOTE: I included a subset of the Messidor dataset of retinal fundus
-images in the SVN repository so these commands will work properly.
-
-#### Run the illumination correction pipeline just to check that it works
-```
-python dehaze.py
-```
-
-#### Run the dehaze tests to visually evaluate the results of applying the pipeline
-
-Note: These tests may use up all your ram until OOM, but shouldn't
-cause the computer to freeze (at least not on Arch linux).  I do that to
-queue up plots so the plots render more quickly.
-
-FYI: in the script, there are 3 tests.  Only one should be enabled:
-```
-    test1 = False
-    test2 = False
-    test3 = True
-```
-```
-python dehaze_testing.py
-```
-
-#### To train the CNN, I used this script to modify my version of the Messidor dataset:
+# Usage
 
 ```
-./create_dehazed_dataset
+git clone <this repo>
+python setup.py develop
+
+# some example enhanced images
+python ietk/methods/sharpen_img.py
+python ietk/methods/brighten_darken.py
 ```
-I then passed that into a pytorch CNN library I developed for my
-research.  I didn't share the library here, but I can share if you need
-to see it.
-
-This command requires a messidor dataset in ./data/messidor.  I include
-a small sample of Messidor there, but to reproduce results shown in
-slides, the CNN needs the full messidor dataset.
 
 
-#### To evaluate whether amount of shadow correlates to the grade, I run the following script to create plots:
-
-I added a couple comments in the file here, since I hadn't completed
-this work during my presentation.
-
-The script by default uses results saved in a csv file that I computed
-on the full dataset.
-
+Example usage:
 ```
-python quantify_shadows.py
+from ietk import methods
+from ietk import util
+from ietk.data import IDRiD
+
+# load an image
+dset = IDRiD('./data/IDRiD_segmentation')
+img_id, img, labels = dset.sample()
+print("using image", img_id)
+
+# crop it and get a focus region
+I = img.copy()
+I, fg = util.center_crop_and_get_foreground_mask(I)
+
+# enhance the image with some enhancement method
+enhanced_img = methods.all_methods['A+B+X'](I, focus_region=fg)
+
+# --> print a list of other enhancements
+print(methods.all_methods.keys())
+
+# plot results
+f, (ax1, ax2) = plt.subplots(1, 2)
+ax1.imshow(img)
+ax2.imshow(enhanced_img)
+f.tight_layout()
 ```
+
+
+# Disclaimer
+
+This code, including the API and methods, is subject to change without
+notice.  If you use it, remember the specific commit you used.
