@@ -13,4 +13,4 @@ torch
 torchvision
 
 ietk
-screendr
+simplepytorch

@@ -8,8 +8,8 @@ import torch.utils.data as TD
 import torchvision.transforms as tvt
 from functools import partial
 
-from screendr import api
-from screendr import datasets as D
+from simplepytorch import api
+from simplepytorch import datasets as D
 
 import ietk.util
 import ietk.methods

@@ -11,7 +11,7 @@ import re
 import torch
 import torchvision.transforms as tvt
 
-import screendr.datasets as D
+import simplepytorch.datasets as D
 import model_configs.qualdr_grading as IC  # might need PYTHONPATH=.:$PYTHONPATH
 
 

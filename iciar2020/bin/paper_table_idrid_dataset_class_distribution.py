@@ -1,5 +1,5 @@
 import numpy as np
-from screendr.datasets import IDRiD_Segmentation
+from simplepytorch.datasets import IDRiD_Segmentation
 
 
 # get distribution of positive pixels per category, on training set.

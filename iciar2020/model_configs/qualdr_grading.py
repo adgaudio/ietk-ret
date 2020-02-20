@@ -8,8 +8,8 @@ import time
 import torch.nn
 import torchvision.transforms as tvt
 
-from screendr import api
-from screendr import datasets as D
+from simplepytorch import api
+from simplepytorch import datasets as D
 from os.path import join
 from model_configs.shared_preprocessing import preprocess, cutout_inplace
 

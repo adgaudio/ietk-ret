@@ -5,7 +5,7 @@ Make one copy of dataset per method
 
 import argparse as ap
 import ietk.methods
-import screendr.api as api
+import simplepytorch.api as api
 import torchvision.transforms as tvt
 from functools import partial
 import os.path

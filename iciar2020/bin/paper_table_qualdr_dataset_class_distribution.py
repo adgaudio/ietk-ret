@@ -1,5 +1,5 @@
 import pandas as pd ;
-from screendr.datasets import QualDR
+from simplepytorch.datasets import QualDR
 
 dfs = {}
 for ts in ['train', 'test']:

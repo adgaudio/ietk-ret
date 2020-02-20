@@ -5,7 +5,7 @@ import numpy as np
 import argparse as ap
 import re
 
-from screendr.plot_perf import _mode_1_get_perf_data_as_df
+from simplepytorch.plot_perf import _mode_1_get_perf_data_as_df
 
 
 def _make_namespace(runid_regex):

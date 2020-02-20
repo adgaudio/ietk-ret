@@ -5,7 +5,7 @@ import numpy as np
 from typing import List
 import os
 from os.path import basename
-import screendr.datasets as D
+import simplepytorch.datasets as D
 import model_configs.shared_preprocessing as SP
 
 @dataclass

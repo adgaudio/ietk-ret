@@ -9,7 +9,7 @@ import os.path
 import torch
 
 from ietk.data import IDRiD
-import screendr.datasets as D
+import simplepytorch.datasets as D
 import ietk.util as U
 import model_configs.segmentation as S
 

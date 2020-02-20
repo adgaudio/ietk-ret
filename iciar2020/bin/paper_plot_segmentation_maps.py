@@ -6,7 +6,7 @@ import torch
 from model_configs import getitem_transforms
 from dataclasses import dataclass
 from argparse_dataclass import ArgumentParser
-import screendr.datasets as D
+import simplepytorch.datasets as D
 from model_configs.shared_preprocessing import preprocess
 
 

@@ -15,7 +15,7 @@ from ietk import methods
 from ietk import util
 
 import model_configs.shared_preprocessing as SP
-import screendr.datasets as D
+import simplepytorch.datasets as D
 
 
 def sep_pixels(img, focus_region, mask):
