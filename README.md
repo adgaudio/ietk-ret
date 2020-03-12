@@ -31,6 +31,7 @@ python ietk/methods/brighten_darken.py
 
 Example usage:
 ```
+from matplotlib import pyplot as plt
 from ietk import methods
 from ietk import util
 from ietk.data import IDRiD
