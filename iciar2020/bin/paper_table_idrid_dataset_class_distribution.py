@@ -1,4 +1,6 @@
 import numpy as np
+import pandas as pd
+
 from simplepytorch.datasets import IDRiD_Segmentation
 
 
@@ -27,7 +29,7 @@ pct = (df / df.sum()).round(3)
 c1 = 'Pos/sum(Pos)'
 pct.columns = pd.MultiIndex.from_tuples([(c1, x) for x in pct.columns])
 # ratio of pos to negative
-pos_neg = ((df/N)*100).round(3)
+pos_neg = ((df/N)).round(4)
 c2 = 'Pos/(Pos+Neg)'
 pos_neg.columns = pd.MultiIndex.from_tuples([(c2, x) for x in pos_neg.columns])
 # count of imgs
