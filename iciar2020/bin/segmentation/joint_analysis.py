@@ -32,6 +32,8 @@ save_table(qualdr, f'{base_dir}/qualdr_top_models.tex', 'MCC')
 save_table(idrid, f'{base_dir}/idrid_top_models.tex', 'Dice')
 save_table(rite, f'{base_dir}/rite_top_models.tex', 'Dice')
 
+save_table(idrid.loc[['A', 'B', 'D', 'X', 'identity']], f'{base_dir}/idrid_competing.tex', 'Dice')
+
 # Correlation between dice and mcc on test set.
 #  left: idrid, right: rite.  show scatter plot with correlation coefficient.
 #  'paper/figures/mcc_vs_dice.png'

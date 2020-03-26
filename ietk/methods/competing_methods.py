@@ -1,12 +1,34 @@
-from functools import partial
+import cv2
 from skimage import exposure
 import numpy as np
 
 from . import dehaze
-from . import sharpen_img
 #  from . import bayes_prior
 from . import msrcr
 
+
+def clahe(img, clipLimit=.5, tileGridSize=(8,8), colorspace=None, **junk):
+    if colorspace is None:
+        icolorspace = None
+    elif colorspace == cv2.COLOR_RGB2LAB:
+        icolorspace = cv2.COLOR_LAB2RGB
+    elif colorspace == cv2.COLOR_RGB2YCrCb:
+        icolorspace = cv2.COLOR_YCrCb2RGB
+    elif colorspace == cv2.COLOR_RGB2HSV:
+        icolorspace = cv2.COLOR_HSV2RGB
+    else:
+        raise Exception('colorspace not implemented')
+    clahe = cv2.createCLAHE(clipLimit=clipLimit, tileGridSize=tileGridSize)
+    if colorspace is not None:
+        lab = cv2.cvtColor((img*255).astype('uint8'), colorspace)
+        lc = clahe.apply(lab[:,:,0])
+        lab[:,:,2 if colorspace == cv2.COLOR_RGB2HSV else 0] = lc
+        I2 = cv2.cvtColor(lab, icolorspace)
+    else:
+        lab = (img * 255).astype('uint8')
+        lab = np.dstack([clahe.apply(lab[:,:,i]) for i in [0,1,2]])
+        I2 = lab
+    return I2
 
 def contrast_stretching(img, **junk):
     # Contrast stretching
@@ -72,4 +94,5 @@ all_methods = {
     'Contrast Stretching': contrast_stretching,
     'Histogram Eq.': hist_eq,
     'Adaptive Histogram Eq.': adaptive_hist_eq,
+    'CLAHE': clahe,
 }
