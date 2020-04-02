@@ -2,7 +2,6 @@ import scipy.ndimage as ndi
 import numpy as np
 from cv2.ximgproc import guidedFilter
 from matplotlib import pyplot as plt
-import PIL
 
 from ietk.methods.sharpen_img import sharpen
 from ietk import util
@@ -33,6 +32,105 @@ def solveJ(I, A, t):
 def gf(guide, src, r=100, eps=1e-8):
     return guidedFilter(guide.astype('float32'), src.astype('float32'), r, eps).astype('float64')
 
+def ta(img, ignore_ch=None, **kws):
+    if ignore_ch is not None:
+        I = img.copy()
+        I[:,:,ignore_ch] = 0
+    else:
+        I = img
+    return solvet(1-img, 1, **kws)
+
+def td(img, ignore_ch=None, **kws):
+    if ignore_ch is not None:
+        I = img.copy()
+        I[:,:,ignore_ch] = 0
+    else:
+        I = img
+    return 1-solvet(1-img, 1, **kws)
+
+def tb(img, ignore_ch=None, **kws):
+    if ignore_ch is not None:
+        I = img.copy()
+        I[:,:,ignore_ch] = 1
+    else:
+        I = img
+    return solvet(I, 1, **kws)
+
+def tc(img, ignore_ch=None, **kws):
+    if ignore_ch is not None:
+        I = img.copy()
+        I[:,:,ignore_ch] = 1
+    else:
+        I = img
+    return 1-solvet(I, 1, **kws)
+
+def A(img):
+    return solveJ(img, 0, ta(img))
+def B(img):
+    return solveJ(img, 0, tb(img))
+def C(img):
+    return solveJ(img, 0, tc(img))
+def D(img):
+    return solveJ(img, 0, td(img))
+def W(img):
+    return solveJ(img, 1, ta(img))
+def X(img):
+    return solveJ(img, 1, tb(img))
+def Y(img):
+    return solveJ(img, 1, tc(img))
+def Z(img):
+    return solveJ(img, 1, td(img))
+def B_ret(img):
+    """specific to retinal fundus images, where blue channel is too sparse"""
+    return solveJ(img, 0, tb(img, ignore_ch=2))
+def C_ret(img):
+    """specific to retinal fundus images, where blue channel is too sparse"""
+    return solveJ(img, 0, tc(img, ignore_ch=2))
+def X_ret(img):
+    """specific to retinal fundus images, where blue channel is too sparse"""
+    return solveJ(img, 1, tb(img, ignore_ch=2))
+def Y_ret(img):
+    """specific to retinal fundus images, where blue channel is too sparse"""
+    return solveJ(img, 1, tc(img, ignore_ch=2))
+
+
+def brighten_darken(img, method_name: str, focus_region=None,
+                    fundus_image: bool=True):
+    """
+    Apply a brightening or darkening method, following the ICIAR2020 paper,
+    Enhancement of Retinal Fundus Images via Pixel Color Amplification.
+
+    `method_name: str` - any combination of letters individual letters
+    'ABCDWXYZ', each optionally prefixed by 's' and separated by a '+'. The
+    's' performs sharpening.  Each of the other letters refers to a brightening
+    (A,B,C or D) or darkening (W,X,Y,Z) operation.  See the Pixel Color
+    Amplification paper for details (ICIAR 2020).
+    Example method names you can try: 'A+B+W+X' or 'sA+sC+sX+sZ'
+
+    `focus_region` - a foreground boolean mask specifying which pixels of image
+    to sharpen
+
+    `fundus_image: bool` By default, assume retinal fundus images, where
+    B,C,X,Y all ignore the blue channel.  If you want to brighten or darken
+    different image domains, you're probably going to want to optimize the
+    neighborhood size in solvet(fsize=(...)) and the guided filter parameters
+    gf(...).  In this case, you should just build your own function using
+    solvet and solveJ directly.
+    """
+    func_names = method_name.split('+')
+    if fundus_image:
+        _methods = dict(zip('ABCDWXYZ', [A,B_ret,C_ret,D,W,X_ret,Y_ret,Z]))
+    else:
+        _methods = dict(zip('ABCDWXYZ', [A,B,C,D,W,X,Y,Z]))
+    I2 = np.zeros_like(img)
+    for func_name in func_names:
+        tmp = _methods[func_name.lstrip('s')](img)
+        if func_name.startswith('s'):
+            tmp = sharpen(tmp, ~focus_region)
+        I2 += tmp
+    I2 /= len(func_names)
+    return I2
+
 
 def resizeforplot(img):
     import PIL
@@ -40,9 +138,8 @@ def resizeforplot(img):
     return np.asarray(PIL.Image.fromarray((img.clip(0, 1)*255).astype('uint8')).resize(
         (size[1], size[0])))
 
+
 if __name__ == "__main__":
-    from ietk import methods
-    from ietk import metric
     import os
     os.makedirs('data/plots/brighten_darken/', exist_ok=True)  # save dir
     # load an image
@@ -66,23 +163,25 @@ if __name__ == "__main__":
     bg = ~fg
     I[bg] = 0
 
-    # four transmission maps
-    a = solvet(1-I, 1)  # == 1-solvetmax(I, 1)
-    d = 1-solvet(1-I, 1)  # == solvetmax(I, 1)
-    I2 = I.copy()
-    I2[:,:,2] = 1  # the min values of blue channel is too noise
-    c = 1-solvet(I2, 1)  # == solvetmax(1-I, 1)
-    b = solvet(I2, 1)  # == 1-solvetmax(1-I, 1)
+    # four transmission maps, for retinal images
+    a,b,c,d = [ta(I), tb(I, ignore_ch=2), tc(I, ignore_ch=2), td(I)]
 
-    #  a = solvet(1-I, 1, False, (50,20))  # == 1-solvetmax(I, 1)
-    #  d = 1-solvet(1-I, 1, False, (50,20))  # == solvetmax(I, 1)
-    #  c = 1-solvet(I, 1, False, (50,20))  # == solvetmax(1-I, 1)
-    #  b = solvet(I, 1, False, (50,20))  # == 1-solvetmax(1-I, 1)
+    #  a = solvet(1-I, 1)  # == 1-solvetmax(I, 1)
+    #  d = 1-solvet(1-I, 1)  # == solvetmax(I, 1)
+    #  I2 = I.copy()
+    #  I2[:,:,2] = 1  # the min values of blue channel is too noise
+    #  c = 1-solvet(I2, 1)  # == solvetmax(1-I, 1)
+    #  b = solvet(I2, 1)  # == 1-solvetmax(1-I, 1)
+
+    #  #  a = solvet(1-I, 1, False, (50,20))  # == 1-solvetmax(I, 1)
+    #  #  d = 1-solvet(1-I, 1, False, (50,20))  # == solvetmax(I, 1)
+    #  #  c = 1-solvet(I, 1, False, (50,20))  # == solvetmax(1-I, 1)
+    #  #  b = solvet(I, 1, False, (50,20))  # == 1-solvetmax(1-I, 1)
 
     # Brighten
-    A, B, C, D = [solveJ(I, 0, t) for t in [a,b,c,d]]
+    A, B, C, D = A(I), B_ret(I), C_ret(I), D(I)
     # Darken
-    W, X, Y, Z = [solveJ(I, 1, t) for t in [a,b,c,d]]
+    W, X, Y, Z = W(I), X_ret(I), Y_ret(I), Z(I)
 
     # Plots
     print('plotting')
