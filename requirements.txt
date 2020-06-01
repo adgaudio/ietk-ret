@@ -1,8 +1,7 @@
 argparse
 cv2
 matplotlib
-mpl_toolkits
 numpy
 pillow
+scikit-image
 scipy
-skimage
