@@ -12,5 +12,5 @@ seaborn
 torch
 torchvision
 
-ietk
-simplepytorch
+ietk==iciar2020_v2
+simplepytorch==0.0.4

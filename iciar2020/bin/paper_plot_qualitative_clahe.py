@@ -28,16 +28,16 @@ f.subplots_adjust(wspace=0.02, hspace=0.02, top=0.9, bottom=0.1)
 f.savefig(save_fp, bbox_inches='tight')
 print(time.time()-s)
 
-#  save_fp = f'{ns.save_fig_dir}/qualitative-{img_idx}-clahe-grid.png'
-#  f, axs = plt.subplots(1, 5, num=2, figsize=(4*5, 4))
-#  for ax_idx, gridsize in enumerate([(2,2), (5,5), (8,8), (20,20), (30,30)]):
-    #  clip = 1
-    #  enhanced_img = clahe(I, clipLimit=clip, tileGridSize=gridsize, colorspace=cv2.COLOR_RGB2LAB)
-    #  axs[ax_idx].imshow(enhanced_img)
-    #  axs[ax_idx].set_title(f"Grid Size: {clip}", fontsize=20)
-    #  axs[ax_idx].axis('off')
-#  f.subplots_adjust(wspace=0.02, hspace=0.02, top=0.9, bottom=0.1)
-#  f.savefig(save_fp, bbox_inches='tight')
+save_fp = f'{ns.save_fig_dir}/qualitative-{img_idx}-clahe-grid.png'
+f, axs = plt.subplots(1, 5, num=2, figsize=(4*5, 4))
+for ax_idx, gridsize in enumerate([(8,8), (20,20), (80,80), (150,150), (250,250)]):
+    clip = 30
+    enhanced_img = clahe(I, clipLimit=clip, tileGridSize=gridsize, colorspace=cv2.COLOR_RGB2LAB)
+    axs[ax_idx].imshow(enhanced_img)
+    axs[ax_idx].set_title(f"Grid Size: {clip}", fontsize=20)
+    axs[ax_idx].axis('off')
+f.subplots_adjust(wspace=0.02, hspace=0.02, top=0.9, bottom=0.1)
+f.savefig(save_fp, bbox_inches='tight')
 
 s = time.time()
 from ietk.methods.sharpen_img import sharpen
