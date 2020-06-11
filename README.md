@@ -52,11 +52,12 @@ from ietk import methods
 from ietk import util
 from ietk.data import IDRiD
 
-# load a fundus image,
+# load a fundus image, normalized into 0-1 range (not 0-255)
 # such as one from the IDRiD dataset  (assuming you already have it on disk)
 dset = IDRiD('./data/IDRiD_segmentation')
 img_id, img, labels = dset.sample()
 print("using image", img_id)
+
 
 # crop fundus image and get a focus region  (a very useful function!)
 I = img.copy()

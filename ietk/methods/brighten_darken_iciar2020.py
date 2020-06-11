@@ -100,6 +100,9 @@ def brighten_darken(img, method_name: str, focus_region=None,
     Apply a brightening or darkening method, following the ICIAR2020 paper,
     Enhancement of Retinal Fundus Images via Pixel Color Amplification.
 
+    `img`: a (h,w,c) fundus image normalized into [0,1] range.  The
+      number of color channels, c > 0.
+
     `method_name: str` - any combination of letters individual letters
     'ABCDWXYZ', each optionally prefixed by 's' and separated by a '+'. The
     's' performs sharpening.  Each of the other letters refers to a brightening
