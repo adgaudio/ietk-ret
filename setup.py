@@ -17,9 +17,8 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/adgaudio/ietk-ret",
     author='Alex Gaudio',
-    license="LGPL3",
     classifiers=[
-        "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
+        "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python :: 3.8",
     ],
     include_package_data=True,
