@@ -25,7 +25,8 @@ setup(
     include_package_data=True,
     packages=['ietk'],
     install_requires=[
-       "argparse", "cv2", "matplotlib", "numpy", "pillow", "scikit-image",
+       "argparse", "opencv-python", "opencv-contrib-python",
+        "matplotlib", "numpy", "pillow", "scikit-image",
         "scipy",
     ]
 )

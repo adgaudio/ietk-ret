@@ -1,5 +1,6 @@
 argparse
-cv2
+opencv-python
+opencv-contrib-python
 matplotlib
 numpy
 pillow
