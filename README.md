@@ -41,12 +41,7 @@ color amplification for brightening, darkening and sharpening.
 # Usage
 
 ```
-git clone <this repo>
-python setup.py develop
-
-# some example enhanced images
-python ietk/methods/sharpen_img.py
-python ietk/methods/brighten_darken.py
+pip install ietk-ret
 ```
 
 
@@ -57,7 +52,8 @@ from ietk import methods
 from ietk import util
 from ietk.data import IDRiD
 
-# load an image from the IDRiD dataset  (assuming you already have it on disk)
+# load a fundus image,
+# such as one from the IDRiD dataset  (assuming you already have it on disk)
 dset = IDRiD('./data/IDRiD_segmentation')
 img_id, img, labels = dset.sample()
 print("using image", img_id)
