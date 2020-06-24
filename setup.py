@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from setuptools import setup
+from setuptools import setup, find_packages
 import pathlib
 
 # The directory containing this file
@@ -22,7 +22,7 @@ setup(
         "Programming Language :: Python :: 3.8",
     ],
     include_package_data=True,
-    packages=['ietk'],
+    packages=find_packages(),
     install_requires=[
        "argparse", "opencv-python", "opencv-contrib-python",
         "matplotlib", "numpy", "pillow", "scikit-image",
