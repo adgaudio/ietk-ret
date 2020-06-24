@@ -11,7 +11,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name='IETK-Ret',
-    version='0.1.0',
+    version='0.1.1',
     description='Image Enhancement Toolkit for Retinal Fundus Images IETK-Ret',
     long_description=README,
     long_description_content_type="text/markdown",
