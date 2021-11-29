@@ -113,12 +113,14 @@ def brighten_darken(img, method_name: str, focus_region=None,
     `focus_region` - a foreground boolean mask specifying which pixels of image
     to sharpen
 
-    `fundus_image: bool` By default, assume retinal fundus images, where
-    B,C,X,Y all ignore the blue channel.  If you want to brighten or darken
-    different image domains, you're probably going to want to optimize the
-    neighborhood size in solvet(fsize=(...)) and the guided filter parameters
-    gf(...).  In this case, you should just build your own function using
-    solvet and solveJ directly.
+    `fundus_image: bool` When True, ensures that the methods B,C,X,Y ignore the
+    blue channel.  This assumes the given input image is in RGB format.
+    The blue channel in fundus images gives a dark channel that is very noisy.
+    Side Note: If you want to brighten or darken different image domains,
+    you're probably going to want to optimize the neighborhood size in
+    solvet(fsize=(...)) and the guided filter parameters gf(...).  In this
+    case, you should just build your own function using solvet and solveJ
+    directly.
     """
     func_names = method_name.split('+')
     if fundus_image:

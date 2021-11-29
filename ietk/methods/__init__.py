@@ -8,11 +8,11 @@ from .sharpen_img import sharpen
 @_dataclass
 class _bd:
     method_name: str
-    def __call__(self, img, fg):
+    def __call__(self, img, focus_region):
         return brighten_darken(
-            img=img, method_name=self.method_name, focus_region=fg)
+            img=img, method_name=self.method_name, focus_region=focus_region)
     def __repr__(self):
-        return f'NAME{self.method_name}(img, focus_region)'
+        return f'{self.method_name}(img, focus_region)'
     def __str__(self):
         return self.__repr__()
 
